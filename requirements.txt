@@ -6,6 +6,12 @@ matplotlib==3.8.2
 seaborn==0.13.1
 numpy==1.26.3
 
+# For video generation (FFmpeg)
+# Note: ffmpeg itself needs to be installed separately on your system.
+# The `ffmpeg-python` library is often used for programmatic FFmpeg control,
+# though the current script uses `subprocess`. Including it as a common dependency.
+ffmpeg-python==0.2.0 
+
 # Optional: Geographic visualization
 folium==0.15.1
 
@@ -13,25 +19,25 @@ folium==0.15.1
 # Uncomment the following lines if you want to add more features:
 
 # For interactive visualizations
- plotly==5.18.0
+plotly==5.18.0
 
 # For statistical analysis
- scipy==1.12.0
- statsmodels==0.14.1
+scipy==1.12.0
+statsmodels==0.14.1
 
 # For text analysis of violation descriptions
- nltk==3.8.1
+nltk==3.8.1
 wordcloud==1.9.3
 
-For machine learning predictions
+# For machine learning predictions
 scikit-learn==1.4.0
 
-For working with date/time zones
+# For working with date/time zones
 pytz==2024.1
 
-For progress bars when processing large datasets
+# For progress bars when processing large datasets
 tqdm==4.66.1
 
-For exporting results to Excel
+# For exporting results to Excel
 openpyxl==3.1.2
 xlsxwriter==3.1.9
