@@ -1,0 +1,16 @@
+{
+  "Northeast Corner": {
+    "latitude": 45.507755,
+    "longitude": -73.562849,
+    "address": "Saint-Urbain / René-Lévesque, Boulevard René-Lévesque Ouest, Quartier Chinois, Ville-Marie, Montréal, Agglomération de Montréal, Montréal (région administrative), Québec, H2Z 1A4, Canada",
+    "query": "Saint-Urbain & René-Lévesque, Montreal, Quebec",
+    "source": "Nominatim"
+  },
+  "Southeast Corner": {
+    "latitude": 45.506144,
+    "longitude": -73.559294,
+    "address": "Station Place-d'Armes (Saint-Urbain / Viger), Autoroute Ville-Marie, Quartier international, Ville-Marie, Montréal, Agglomération de Montréal, Montréal (région administrative), Québec, H2Z 0A1, Canada",
+    "query": "Saint-Urbain & Viger, Montreal, Quebec",
+    "source": "Nominatim"
+  }
+}

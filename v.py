@@ -22,31 +22,63 @@ FPS = 5 # Frames per second for the video (adjust for speed)
 DPI = 100 # Dots per inch for image quality
 PAUSE_FRAMES = FPS * 2 # 2-second pause at the end of each section
 
+# FIXED: Set figure size to ensure even width/height for FFmpeg
+FIGURE_WIDTH = 14  # This will result in 1400 pixels at 100 DPI (even number)
+FIGURE_HEIGHT = 8   # This will result in 800 pixels at 100 DPI (even number)
+
+# Creator credit text
+CREATOR_TEXT_EN = "Created by Mycole Brown"
+CREATOR_TEXT_FR = "Créé par Mycole Brown"
+
 # --- Load Data ---
 print("Loading data...")
 try:
-    violations = pd.read_csv('violations.csv')
-    print(f"✓ Loaded {len(violations)} violations")
+    # Use the with_neighborhoods CSV files as specified
+    violations = pd.read_csv('violations_with_neighborhoods.csv')
+    print(f"✓ Loaded {len(violations)} violations with neighborhood data")
     
-    businesses = pd.read_csv('businesses.csv')
-    print(f"✓ Loaded {len(businesses)} businesses")
+    businesses = pd.read_csv('businesses_with_neighborhoods.csv')
+    print(f"✓ Loaded {len(businesses)} businesses with neighborhood data")
 except FileNotFoundError as e:
-    print(f"✗ Error: {e}. Please ensure both violations.csv and businesses.csv are in the same directory.")
+    print(f"✗ Error: {e}")
+    print("Please ensure the 'violations_with_neighborhoods.csv' and 'businesses_with_neighborhoods.csv' files are in the same directory.")
     exit()
 
 # --- Data Inspection ---
 print("\n=== DATA INSPECTION ===")
-print(f"Columns in violations.csv: {list(violations.columns)}")
+print(f"Columns in violations CSV: {list(violations.columns)}")
 print(f"Date column sample values: {violations['date'].head(10).tolist()}")
 print(f"Date column dtype: {violations['date'].dtype}")
 
-# Examine neighborhood data
-print(f"\nUnique neighborhoods in violations (ville): {len(violations['ville'].dropna().unique())}")
-print(f"Unique neighborhoods in businesses (city): {len(businesses['city'].dropna().unique())}")
+# Check for GPS data
+if 'gps' in violations.columns:
+    gps_violations = violations['gps'].notna().sum()
+    print(f"✓ GPS data available in violations: {gps_violations} records with GPS")
+    if gps_violations > 0:
+        print(f"Sample GPS data: {violations['gps'].dropna().head(3).tolist()}")
+else:
+    print("⚠️  No GPS data in violations CSV")
 
-# Show actual neighborhood names
-print(f"\nSample violation neighborhoods: {sorted(violations['ville'].dropna().unique())[:10]}")
-print(f"Sample business neighborhoods: {sorted(businesses['city'].dropna().unique())[:10]}")
+if 'gps' in businesses.columns:
+    gps_businesses = businesses['gps'].notna().sum()
+    print(f"✓ GPS data available in businesses: {gps_businesses} records with GPS")
+else:
+    print("⚠️  No GPS data in businesses CSV")
+
+# Examine neighborhood data
+violations_with_neighborhoods = violations['neighborhood'].notna().sum()
+businesses_with_neighborhoods = businesses['neighborhood'].notna().sum()
+
+print(f"\nViolations with neighborhoods: {violations_with_neighborhoods}/{len(violations)} ({violations_with_neighborhoods/len(violations)*100:.1f}%)")
+print(f"Businesses with neighborhoods: {businesses_with_neighborhoods}/{len(businesses)} ({businesses_with_neighborhoods/len(businesses)*100:.1f}%)")
+
+if violations_with_neighborhoods > 0:
+    print(f"Unique neighborhoods in violations: {len(violations['neighborhood'].dropna().unique())}")
+    print(f"Sample violation neighborhoods: {sorted(violations['neighborhood'].dropna().unique())[:10]}")
+
+if businesses_with_neighborhoods > 0:
+    print(f"Unique neighborhoods in businesses: {len(businesses['neighborhood'].dropna().unique())}")
+    print(f"Sample business neighborhoods: {sorted(businesses['neighborhood'].dropna().unique())[:10]}")
 
 # --- Data Preprocessing ---
 print("\n=== DATA PREPROCESSING ===")
@@ -87,35 +119,112 @@ if 'categorie' not in violations.columns:
 else:
     print(f"✓ Found {violations['categorie'].nunique()} unique categories")
 
-# Clean neighborhood data
+# Clean neighborhood data - use both ville and neighborhood columns
 print("Processing neighborhood data...")
-violations['neighborhood'] = violations['ville'].fillna('Unknown')
-businesses['neighborhood'] = businesses['city'].fillna('Unknown')
+
+# For violations, use neighborhood if available, otherwise fall back to ville
+violations['final_neighborhood'] = violations['neighborhood'].fillna(violations.get('ville', 'Unknown')).fillna('Unknown')
+
+# For businesses, use neighborhood if available, otherwise fall back to city
+businesses['final_neighborhood'] = businesses['neighborhood'].fillna(businesses.get('city', 'Unknown')).fillna('Unknown')
+
+print(f"Final violations neighborhoods: {violations['final_neighborhood'].nunique()} unique")
+print(f"Final business neighborhoods: {businesses['final_neighborhood'].nunique()} unique")
+
+# Process GPS data if available
+if 'gps' in violations.columns and 'gps' in businesses.columns:
+    print("Processing GPS coordinates...")
+    
+    def parse_gps(gps_string):
+        if pd.isna(gps_string):
+            return None, None
+        try:
+            coords = str(gps_string).split(',')
+            if len(coords) >= 2:
+                lat = float(coords[0].strip())
+                lon = float(coords[1].strip())
+                return lat, lon
+        except:
+            pass
+        return None, None
+    
+    violations[['parsed_lat', 'parsed_lon']] = violations['gps'].apply(
+        lambda x: pd.Series(parse_gps(x))
+    )
+    businesses[['parsed_lat', 'parsed_lon']] = businesses['gps'].apply(
+        lambda x: pd.Series(parse_gps(x))
+    )
+    
+    valid_violation_coords = violations[['parsed_lat', 'parsed_lon']].notna().all(axis=1).sum()
+    valid_business_coords = businesses[['parsed_lat', 'parsed_lon']].notna().all(axis=1).sum()
+    
+    print(f"✓ Parsed coordinates - Violations: {valid_violation_coords}, Businesses: {valid_business_coords}")
 
 # Get the top neighborhoods by actual violation count for better per capita analysis
 print(f"\nTop neighborhoods by violation count:")
-top_violation_neighborhoods = violations['neighborhood'].value_counts().head(15)
+top_violation_neighborhoods = violations['final_neighborhood'].value_counts().head(15)
 print(top_violation_neighborhoods)
 
 print(f"\nTop neighborhoods by business count:")
-top_business_neighborhoods = businesses['neighborhood'].value_counts().head(15)
+top_business_neighborhoods = businesses['final_neighborhood'].value_counts().head(15)
 print(top_business_neighborhoods)
 
 # Find neighborhoods that have both significant violations AND businesses for per capita analysis
-violation_neighborhoods = set(violations['neighborhood'].value_counts().head(20).index)
-business_neighborhoods = set(businesses['neighborhood'].value_counts().head(20).index)
+violation_neighborhoods = set(violations['final_neighborhood'].value_counts().head(20).index)
+business_neighborhoods = set(businesses['final_neighborhood'].value_counts().head(20).index)
 common_neighborhoods = violation_neighborhoods.intersection(business_neighborhoods)
 
 print(f"\nNeighborhoods with both violations and businesses (top candidates for per capita): {len(common_neighborhoods)}")
 print(f"Common neighborhoods: {sorted(common_neighborhoods)}")
 
-# Use the top 10 neighborhoods that have both violations and businesses
-target_neighborhoods_for_per_capita = list(common_neighborhoods)[:10]
-print(f"\nUsing these neighborhoods for per capita analysis: {target_neighborhoods_for_per_capita}")
+# UPDATED: Specify neighborhoods of interest and combine with top performers
+specified_neighborhoods = ['Quartier chinois', 'Little Italy', 'Villeray']
+print(f"\nSpecified neighborhoods to include: {specified_neighborhoods}")
+
+# Check which specified neighborhoods exist in the data (case-insensitive)
+existing_specified = []
+for neighborhood in specified_neighborhoods:
+    # Check violations
+    violations_matches = violations[violations['final_neighborhood'].str.contains(neighborhood, case=False, na=False)]
+    businesses_matches = businesses[businesses['final_neighborhood'].str.contains(neighborhood, case=False, na=False)]
+    
+    print(f"\nChecking for '{neighborhood}':")
+    if len(violations_matches) > 0:
+        matched_neighborhoods = violations_matches['final_neighborhood'].value_counts()
+        print(f"  Violations matches: {matched_neighborhoods.to_dict()}")
+        # Use the most common match
+        exact_name = matched_neighborhoods.index[0]
+        existing_specified.append(exact_name)
+    else:
+        print(f"  No violations found for '{neighborhood}'")
+    
+    if len(businesses_matches) > 0:
+        matched_businesses = businesses_matches['final_neighborhood'].value_counts()
+        print(f"  Business matches: {matched_businesses.to_dict()}")
+    else:
+        print(f"  No businesses found for '{neighborhood}'")
+
+# Combine specified neighborhoods with top common neighborhoods
+target_neighborhoods_for_per_capita = list(set(existing_specified + list(common_neighborhoods)[:10]))
+
+# Ensure we have at least some neighborhoods to analyze
+if len(target_neighborhoods_for_per_capita) == 0:
+    # Fallback to top violation neighborhoods
+    target_neighborhoods_for_per_capita = list(violation_neighborhoods)[:10]
+    print(f"⚠️ Fallback: Using top violation neighborhoods")
+
+print(f"\nFinal neighborhoods for per capita analysis ({len(target_neighborhoods_for_per_capita)}): {target_neighborhoods_for_per_capita}")
 
 # Count businesses per neighborhood
-businesses_per_neighborhood = businesses.groupby('neighborhood').size()
+businesses_per_neighborhood = businesses.groupby('final_neighborhood').size()
 print(f"✓ Business counts calculated for {len(businesses_per_neighborhood)} neighborhoods")
+
+# Show business counts for our target neighborhoods
+print(f"\nBusiness counts for target neighborhoods:")
+for neighborhood in target_neighborhoods_for_per_capita:
+    business_count = businesses_per_neighborhood.get(neighborhood, 0)
+    violation_count = violations[violations['final_neighborhood'] == neighborhood].shape[0]
+    print(f"  {neighborhood}: {business_count} businesses, {violation_count} violations")
 
 # --- Create Base Output Directory ---
 if os.path.exists(OUTPUT_BASE_FOLDER):
@@ -125,6 +234,20 @@ os.makedirs(OUTPUT_BASE_FOLDER)
 print(f"✓ Created base output folder: {OUTPUT_BASE_FOLDER}")
 
 # --- Enhanced Frame Generation Functions ---
+def add_creator_credit(ax):
+    """Add creator credit to the plot"""
+    # Add English credit
+    ax.text(0.02, 0.98, CREATOR_TEXT_EN, transform=ax.transAxes, 
+            fontsize=10, fontweight='bold', color='#333333',
+            verticalalignment='top', horizontalalignment='left',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+    
+    # Add French credit
+    ax.text(0.02, 0.93, CREATOR_TEXT_FR, transform=ax.transAxes, 
+            fontsize=10, fontweight='bold', color='#333333',
+            verticalalignment='top', horizontalalignment='left',
+            bbox=dict(boxstyle='round,pad=0.3', facecolor='white', alpha=0.8))
+
 def generate_single_line_frames(data_series, title_prefix, output_subfolder, ylabel='Number of Violations'):
     """Generate frames for single line plot (violations per month)"""
     print(f"\n--- Generating frames for {output_subfolder} ---")
@@ -146,29 +269,35 @@ def generate_single_line_frames(data_series, title_prefix, output_subfolder, yla
 
     for i, current_month in enumerate(months):
         try:
-            plt.figure(figsize=(14, 8))
+            fig, ax = plt.subplots(figsize=(FIGURE_WIDTH, FIGURE_HEIGHT))
 
             # Data for current month and all previous months
             data_to_plot = data_series.loc[data_series.index <= current_month]
             if not data_to_plot.empty:
-                plt.plot(range(len(data_to_plot)), data_to_plot.values,
-                         marker='o', linestyle='-', color='#2c5aa0', linewidth=2, markersize=6)
+                ax.plot(range(len(data_to_plot)), data_to_plot.values,
+                        marker='o', linestyle='-', color='#2c5aa0', linewidth=2, markersize=6)
                 # Use numeric x-axis with month labels
                 tick_positions = range(0, len(data_to_plot), max(1, len(data_to_plot)//10))
                 tick_labels = [str(data_to_plot.index[pos]) for pos in tick_positions if pos < len(data_to_plot)]
-                plt.xticks(tick_positions, tick_labels, rotation=45, ha='right')
+                ax.set_xticks(tick_positions)
+                ax.set_xticklabels(tick_labels, rotation=45, ha='right')
             
-            plt.ylabel(ylabel, fontsize=14)
-            plt.ylim(0, y_max)
-            plt.title(f'{title_prefix}\n{current_month.strftime("%B %Y")}',
-                      fontsize=18, fontweight='bold')
-            plt.xlabel('Timeline', fontsize=14)
-            plt.grid(True, linestyle='--', alpha=0.6)
+            ax.set_ylabel(ylabel, fontsize=14)
+            ax.set_ylim(0, y_max)
+            ax.set_title(f'{title_prefix}\n{current_month.strftime("%B %Y")}',
+                        fontsize=18, fontweight='bold')
+            ax.set_xlabel('Timeline', fontsize=14)
+            ax.grid(True, linestyle='--', alpha=0.6)
+            
+            # Add creator credit
+            add_creator_credit(ax)
+            
             plt.tight_layout()
 
             # Save the frame
             frame_filename = os.path.join(folder_path, f'frame_{i:04d}.png')
-            plt.savefig(frame_filename, dpi=DPI, bbox_inches='tight')
+            plt.savefig(frame_filename, dpi=DPI, bbox_inches='tight', 
+                       facecolor='white', edgecolor='none')
             plt.close()
             frame_count += 1
             
@@ -236,7 +365,7 @@ def generate_multiline_frames(data_series, title_prefix, output_subfolder, ylabe
 
     for i, current_month in enumerate(months):
         try:
-            plt.figure(figsize=(14, 8))
+            fig, ax = plt.subplots(figsize=(FIGURE_WIDTH, FIGURE_HEIGHT))
 
             # Plot lines for each top category/neighborhood up to current month
             legend_labels = []
@@ -254,34 +383,39 @@ def generate_multiline_frames(data_series, title_prefix, output_subfolder, ylabe
                     item_months.append(month)
                 
                 if item_data:
-                    plt.plot(range(len(item_data)), item_data,
-                             marker='o', linestyle='-', color=colors[j], 
-                             linewidth=2, markersize=4, alpha=0.8)
+                    ax.plot(range(len(item_data)), item_data,
+                            marker='o', linestyle='-', color=colors[j], 
+                            linewidth=2, markersize=4, alpha=0.8)
                     legend_labels.append(str(item)[:25] + ('...' if len(str(item)) > 25 else ''))
             
             # Set up the plot
-            plt.ylabel(ylabel, fontsize=14)
-            plt.ylim(0, y_max)
-            plt.title(f'{title_prefix}\n{current_month.strftime("%B %Y")}',
-                      fontsize=18, fontweight='bold')
-            plt.xlabel('Timeline', fontsize=14)
-            plt.grid(True, linestyle='--', alpha=0.6)
+            ax.set_ylabel(ylabel, fontsize=14)
+            ax.set_ylim(0, y_max)
+            ax.set_title(f'{title_prefix}\n{current_month.strftime("%B %Y")}',
+                        fontsize=18, fontweight='bold')
+            ax.set_xlabel('Timeline', fontsize=14)
+            ax.grid(True, linestyle='--', alpha=0.6)
             
             # Add legend
             if legend_labels:
-                plt.legend(legend_labels, bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
+                ax.legend(legend_labels, bbox_to_anchor=(1.05, 1), loc='upper left', fontsize=10)
             
             # Set x-axis labels
             if i > 0:
                 tick_positions = range(0, i+1, max(1, (i+1)//10))
                 tick_labels = [str(months[pos]) for pos in tick_positions if pos <= i]
-                plt.xticks(tick_positions, tick_labels, rotation=45, ha='right')
+                ax.set_xticks(tick_positions)
+                ax.set_xticklabels(tick_labels, rotation=45, ha='right')
+            
+            # Add creator credit
+            add_creator_credit(ax)
             
             plt.tight_layout()
 
             # Save the frame
             frame_filename = os.path.join(folder_path, f'frame_{i:04d}.png')
-            plt.savefig(frame_filename, dpi=DPI, bbox_inches='tight')
+            plt.savefig(frame_filename, dpi=DPI, bbox_inches='tight',
+                       facecolor='white', edgecolor='none')
             plt.close()
             frame_count += 1
             
@@ -351,20 +485,23 @@ def create_video_from_folders(folder_list, output_filename):
     
     print(f"✓ Created combined frames folder with {frame_num} images")
     
-    # FFmpeg command using image sequence
+    # Enhanced FFmpeg command with scaling filter to ensure even dimensions
     ffmpeg_command = [
         'ffmpeg',
-        '-y',
+        '-y',  # Overwrite output files
         '-framerate', str(FPS),
         '-i', os.path.join(combined_folder, 'frame_%06d.png'),
+        '-vf', 'scale=trunc(iw/2)*2:trunc(ih/2)*2',  # Force even width/height
         '-c:v', 'libx264',
         '-pix_fmt', 'yuv420p',
         '-crf', '23',
         '-preset', 'medium',
+        '-movflags', '+faststart',  # Optimize for web playback
         output_filename
     ]
     
     try:
+        print(f"Running FFmpeg command: {' '.join(ffmpeg_command)}")
         result = subprocess.run(ffmpeg_command, check=True, capture_output=True, text=True)
         print(f"✓ Video '{output_filename}' created successfully!")
         
@@ -377,11 +514,35 @@ def create_video_from_folders(folder_list, output_filename):
         
     except subprocess.CalledProcessError as e:
         print(f"✗ Error creating video {output_filename}:")
+        print(f"STDOUT: {e.stdout}")
         print(f"STDERR: {e.stderr}")
-        return False
+        
+        # Try alternative approach with different scaling
+        print("Trying alternative FFmpeg approach...")
+        alt_command = [
+            'ffmpeg',
+            '-y',
+            '-framerate', str(FPS),
+            '-i', os.path.join(combined_folder, 'frame_%06d.png'),
+            '-vf', 'scale=1400:800',  # Force specific even dimensions
+            '-c:v', 'libx264',
+            '-pix_fmt', 'yuv420p',
+            '-crf', '23',
+            '-preset', 'fast',
+            output_filename
+        ]
+        
+        try:
+            alt_result = subprocess.run(alt_command, check=True, capture_output=True, text=True)
+            print(f"✓ Video '{output_filename}' created successfully with alternative method!")
+            return True
+        except subprocess.CalledProcessError as e2:
+            print(f"✗ Alternative method also failed: {e2.stderr}")
+            return False
         
     except FileNotFoundError:
         print("✗ Error: FFmpeg not found. Please install FFmpeg and ensure it's in your system's PATH.")
+        print("Download from: https://ffmpeg.org/download.html")
         return False
 
 # --- Generate Visualizations ---
@@ -406,22 +567,36 @@ violations_by_category_month = violations.groupby(['year_month', 'categorie']).s
 frames_2 = generate_multiline_frames(violations_by_category_month, 'Health Violations in Montreal by Category', 
                                     'violations_by_category_per_month', 'Number of Violations', top_n=10)
 
-# Visualization 3: Violations per Capita by Neighborhood per Month (FIXED)
-print("\n=== VISUALIZATION 3: VIOLATIONS PER CAPITA BY NEIGHBORHOOD (FIXED) ===")
+# Visualization 3: Violations per Capita by Neighborhood per Month (ENHANCED WITH GPS)
+print("\n=== VISUALIZATION 3: VIOLATIONS PER CAPITA BY NEIGHBORHOOD (WITH GPS ENHANCEMENT) ===")
 
 # Calculate violations per capita more systematically
 violations_per_capita_data = []
 
-# Group violations by month and neighborhood
-violations_by_neighborhood_month = violations.groupby(['year_month', 'neighborhood']).size()
+# Group violations by month and neighborhood (using final_neighborhood)
+violations_by_neighborhood_month = violations.groupby(['year_month', 'final_neighborhood']).size()
 
 # Get all unique months
 all_months = violations['year_month'].unique()
 
-# Use the neighborhoods we identified as having both violations and businesses
+# Use the neighborhoods we identified (including specified ones)
 neighborhoods_to_analyze = target_neighborhoods_for_per_capita
 
 print(f"Analyzing per capita for neighborhoods: {neighborhoods_to_analyze}")
+
+# If GPS data is available, print some geographic insights
+if 'parsed_lat' in violations.columns and 'parsed_lon' in violations.columns:
+    print("\nGPS-based geographic insights:")
+    for neighborhood in neighborhoods_to_analyze[:5]:  # Show top 5 neighborhoods
+        neighborhood_violations = violations[violations['final_neighborhood'] == neighborhood]
+        valid_coords = neighborhood_violations[['parsed_lat', 'parsed_lon']].notna().all(axis=1)
+        
+        if valid_coords.sum() > 0:
+            lat_range = neighborhood_violations.loc[valid_coords, 'parsed_lat'].agg(['min', 'max'])
+            lon_range = neighborhood_violations.loc[valid_coords, 'parsed_lon'].agg(['min', 'max'])
+            print(f"  {neighborhood}: {valid_coords.sum()} violations with GPS coords")
+            print(f"    Lat range: {lat_range['min']:.4f} to {lat_range['max']:.4f}")
+            print(f"    Lon range: {lon_range['min']:.4f} to {lon_range['max']:.4f}")
 
 for month in all_months:
     for neighborhood in neighborhoods_to_analyze:
@@ -431,7 +606,7 @@ for month in all_months:
         else:
             violation_count = 0
         
-        # Get business count for this neighborhood
+        # Get business count for this neighborhood (using final_neighborhood)
         if neighborhood in businesses_per_neighborhood.index:
             business_count = businesses_per_neighborhood.loc[neighborhood]
         else:
@@ -460,7 +635,7 @@ print(f"Neighborhoods in per capita analysis: {list(neighborhoods_in_per_capita)
 # Print some sample data for each neighborhood
 for neighborhood in neighborhoods_in_per_capita:
     neighborhood_data = violations_per_capita_series.xs(neighborhood, level=1)
-    total_violations = violations[violations['neighborhood'] == neighborhood].shape[0]
+    total_violations = violations[violations['final_neighborhood'] == neighborhood].shape[0]
     business_count = businesses_per_neighborhood.get(neighborhood, 0)
     print(f"{neighborhood}: {total_violations} total violations, {business_count} businesses, max per capita: {neighborhood_data.max():.4f}")
 
@@ -494,3 +669,32 @@ if success_1:
     print(f"✓ Created overview video: {VIDEO_1_FILENAME}")
 if success_2:
     print(f"✓ Created per capita video: {VIDEO_2_FILENAME}")
+
+# Final summary
+print(f"\n=== SUMMARY ===")
+print(f"Total frames generated: {total_frames}")
+print(f"Creator credit added: {CREATOR_TEXT_EN} / {CREATOR_TEXT_FR}")
+
+# GPS data summary
+if 'gps' in violations.columns:
+    gps_violations = violations['gps'].notna().sum()
+    print(f"GPS-enabled violations: {gps_violations}/{len(violations)} ({gps_violations/len(violations)*100:.1f}%)")
+if 'gps' in businesses.columns:
+    gps_businesses = businesses['gps'].notna().sum()
+    print(f"GPS-enabled businesses: {gps_businesses}/{len(businesses)} ({gps_businesses/len(businesses)*100:.1f}%)")
+
+# Summary of target neighborhoods
+print(f"\nTarget neighborhoods included in per capita analysis:")
+for i, neighborhood in enumerate(target_neighborhoods_for_per_capita, 1):
+    violation_count = violations[violations['final_neighborhood'] == neighborhood].shape[0]
+    business_count = businesses_per_neighborhood.get(neighborhood, 0)
+    specified_status = "✓ SPECIFIED" if neighborhood in existing_specified else ""
+    print(f"  {i:2d}. {neighborhood}: {violation_count} violations, {business_count} businesses {specified_status}")
+
+if success_1 and success_2:
+    print("✅ Both videos created successfully with GPS data and creator credits!")
+    print("✅ Specified neighborhoods (Quartier chinois, Little Italy, Villeray) included where data available!")
+elif success_1 or success_2:
+    print("⚠️  One video created successfully, check the other")
+else:
+    print("❌ Video creation failed - check FFmpeg installation")

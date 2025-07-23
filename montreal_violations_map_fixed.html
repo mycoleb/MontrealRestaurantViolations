@@ -1,0 +1,1514 @@
+<!DOCTYPE html>
+<html>
+<head>
+    
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+    
+        <script>
+            L_NO_TOUCH = false;
+            L_DISABLE_3D = false;
+        </script>
+    
+    <style>html, body {width: 100%;height: 100%;margin: 0;padding: 0;}</style>
+    <style>#map {position:absolute;top:0;bottom:0;right:0;left:0;}</style>
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.3/dist/leaflet.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.2/dist/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://netdna.bootstrapcdn.com/bootstrap/3.0.0/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.2.0/css/all.min.css"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/Leaflet.awesome-markers/2.0.2/leaflet.awesome-markers.css"/>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/python-visualization/folium/folium/templates/leaflet.awesome.rotate.min.css"/>
+    
+            <meta name="viewport" content="width=device-width,
+                initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+            <style>
+                #map_2e691716c8f257b77cc34bf7a7822c0d {
+                    position: relative;
+                    width: 100.0%;
+                    height: 100.0%;
+                    left: 0.0%;
+                    top: 0.0%;
+                }
+                .leaflet-container { font-size: 1rem; }
+            </style>
+        
+</head>
+<body>
+    
+    
+    <div style="position: fixed; 
+                top: 10px; left: 50%; width: 600px; height: 90px; 
+                margin-left: -300px; background-color: white; border:2px solid grey; z-index:9999; 
+                font-size:18px; text-align: center; padding: 10px; border-radius: 5px;">
+    <p style="margin: 5px 0; font-weight: bold;">Montreal Health Violations by Neighborhood</p>
+    <p style="font-size:14px; margin: 5px 0;">Hover over neighborhoods to see names and ratios</p>
+    </div>
+    
+    
+    <div style="position: fixed; 
+                bottom: 50px; right: 50px; width: 220px; height: 180px; 
+                background-color: white; border:2px solid grey; z-index:9999; 
+                font-size:14px; padding: 15px; border-radius: 5px;">
+    <h4 style="margin: 0 0 15px 0;">Violation Ratio Legend</h4>
+    <p style="margin: 5px 0;"><i class="fa fa-square" style="color:#1a9850"></i> Low (0.0 - 0.2)</p>
+    <p style="margin: 5px 0;"><i class="fa fa-square" style="color:#91bfdb"></i> Medium-Low (0.2 - 0.4)</p>
+    <p style="margin: 5px 0;"><i class="fa fa-square" style="color:#ffffbf"></i> Medium (0.4 - 0.6)</p>
+    <p style="margin: 5px 0;"><i class="fa fa-square" style="color:#fc8d59"></i> Medium-High (0.6 - 0.8)</p>
+    <p style="margin: 5px 0;"><i class="fa fa-square" style="color:#d73027"></i> High (0.8+)</p>
+    </div>
+    
+    
+            <div class="folium-map" id="map_2e691716c8f257b77cc34bf7a7822c0d" ></div>
+        
+</body>
+<script>
+    
+    
+            var map_2e691716c8f257b77cc34bf7a7822c0d = L.map(
+                "map_2e691716c8f257b77cc34bf7a7822c0d",
+                {
+                    center: [45.5017, -73.5673],
+                    crs: L.CRS.EPSG3857,
+                    zoom: 11,
+                    zoomControl: true,
+                    preferCanvas: false,
+                }
+            );
+
+            
+
+        
+    
+            var tile_layer_773b50358e662b7d45cf0411a2ce7472 = L.tileLayer(
+                "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+                {"attribution": "\u0026copy; \u003ca href=\"https://www.openstreetmap.org/copyright\"\u003eOpenStreetMap\u003c/a\u003e contributors", "detectRetina": false, "maxNativeZoom": 19, "maxZoom": 19, "minZoom": 0, "noWrap": false, "opacity": 1, "subdomains": "abc", "tms": false}
+            );
+        
+    
+            tile_layer_773b50358e662b7d45cf0411a2ce7472.addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+            var polygon_f50300590d542cf57063f42ad9baa833 = L.polygon(
+                [[45.485, -73.58], [45.485, -73.54], [45.52, -73.54], [45.52, -73.58]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_39e066dcbf421c0ca4432b78fea6977d = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_1490b666449d6f9bdfd4f0fe0f025ef2 = $(`<div id="html_1490b666449d6f9bdfd4f0fe0f025ef2" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Ville-Marie         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 6564</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 928</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.141</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_39e066dcbf421c0ca4432b78fea6977d.setContent(html_1490b666449d6f9bdfd4f0fe0f025ef2);
+            
+        
+
+        polygon_f50300590d542cf57063f42ad9baa833.bindPopup(popup_39e066dcbf421c0ca4432b78fea6977d)
+        ;
+
+        
+    
+    
+            polygon_f50300590d542cf57063f42ad9baa833.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Ville-Marie
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.141<br>
+            <strong>Details:</strong> 928 violations / 6564 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_e2f303725d304190f4c87157a94ffe2a = L.polygon(
+                [[45.509282, -73.561113], [45.507696, -73.562595], [45.507041, -73.561215], [45.505557, -73.562643], [45.50493, -73.56112], [45.508093, -73.558214]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#d73027", "fillOpacity": 0.8, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_84272fc9361eb1813190f7a74de6915b = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_b791eba3fbde4c32c4d5bc3675284601 = $(`<div id="html_b791eba3fbde4c32c4d5bc3675284601" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             🏮 Chinatown         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 263</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 312</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #d73027; font-size: 18px;">                1.186</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_84272fc9361eb1813190f7a74de6915b.setContent(html_b791eba3fbde4c32c4d5bc3675284601);
+            
+        
+
+        polygon_e2f303725d304190f4c87157a94ffe2a.bindPopup(popup_84272fc9361eb1813190f7a74de6915b)
+        ;
+
+        
+    
+    
+            polygon_e2f303725d304190f4c87157a94ffe2a.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            🏮 Chinatown
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 1.186<br>
+            <strong>Details:</strong> 312 violations / 263 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_e1f9d36bb18bde5ad2cdd9e0f6e04a05 = L.polygon(
+                [[45.51, -73.595], [45.51, -73.56], [45.535, -73.56], [45.535, -73.595]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#91bfdb", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_b30ba7ab6d46a5fb3c7a4d4938259107 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_087614cffd548665e2d56a2571e9f8a2 = $(`<div id="html_087614cffd548665e2d56a2571e9f8a2" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Le Plateau-Mont-Royal         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 2201</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 465</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #91bfdb; font-size: 18px;">                0.211</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_b30ba7ab6d46a5fb3c7a4d4938259107.setContent(html_087614cffd548665e2d56a2571e9f8a2);
+            
+        
+
+        polygon_e1f9d36bb18bde5ad2cdd9e0f6e04a05.bindPopup(popup_b30ba7ab6d46a5fb3c7a4d4938259107)
+        ;
+
+        
+    
+    
+            polygon_e1f9d36bb18bde5ad2cdd9e0f6e04a05.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Le Plateau-Mont-Royal
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.211<br>
+            <strong>Details:</strong> 465 violations / 2201 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_8de5f836c829b2c42c7546a2173e2b84 = L.polygon(
+                [[45.515, -73.62], [45.515, -73.59], [45.535, -73.59], [45.535, -73.62]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_2a523e70b48c52c8dfc4bc67e679882a = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_8bcaab310959427bf7e2c8d4f0f0a61d = $(`<div id="html_8bcaab310959427bf7e2c8d4f0f0a61d" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Outremont         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 1629</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 263</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.161</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_2a523e70b48c52c8dfc4bc67e679882a.setContent(html_8bcaab310959427bf7e2c8d4f0f0a61d);
+            
+        
+
+        polygon_8de5f836c829b2c42c7546a2173e2b84.bindPopup(popup_2a523e70b48c52c8dfc4bc67e679882a)
+        ;
+
+        
+    
+    
+            polygon_8de5f836c829b2c42c7546a2173e2b84.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Outremont
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.161<br>
+            <strong>Details:</strong> 263 violations / 1629 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_f7bbf1b66295eb5fd5b0a0bb869c831b = L.polygon(
+                [[45.53, -73.595], [45.53, -73.565], [45.56, -73.565], [45.56, -73.595]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_6fb90af0489646351395d2af0db9ce50 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_1823598c523999b2105aa7ddd702373a = $(`<div id="html_1823598c523999b2105aa7ddd702373a" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Rosemont–La Petite-Patrie         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 1138</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 94</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.083</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_6fb90af0489646351395d2af0db9ce50.setContent(html_1823598c523999b2105aa7ddd702373a);
+            
+        
+
+        polygon_f7bbf1b66295eb5fd5b0a0bb869c831b.bindPopup(popup_6fb90af0489646351395d2af0db9ce50)
+        ;
+
+        
+    
+    
+            polygon_f7bbf1b66295eb5fd5b0a0bb869c831b.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Rosemont–La Petite-Patrie
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.083<br>
+            <strong>Details:</strong> 94 violations / 1138 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_27294afd69f4984a21751e6391448432 = L.polygon(
+                [[45.545, -73.64], [45.545, -73.6], [45.575, -73.6], [45.575, -73.64]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#91bfdb", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_f6e95f4b13027ff103b91c2b48b0a943 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_b55e70449779efb085f3bf8e5e35e5b1 = $(`<div id="html_b55e70449779efb085f3bf8e5e35e5b1" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Villeray–Saint-Michel–Parc-Extension         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 1109</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 231</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #91bfdb; font-size: 18px;">                0.208</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_f6e95f4b13027ff103b91c2b48b0a943.setContent(html_b55e70449779efb085f3bf8e5e35e5b1);
+            
+        
+
+        polygon_27294afd69f4984a21751e6391448432.bindPopup(popup_f6e95f4b13027ff103b91c2b48b0a943)
+        ;
+
+        
+    
+    
+            polygon_27294afd69f4984a21751e6391448432.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Villeray–Saint-Michel–Parc-Extension
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.208<br>
+            <strong>Details:</strong> 231 violations / 1109 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_8374e258619fa4a6963968c2fe4f2d58 = L.polygon(
+                [[45.54, -73.7], [45.54, -73.64], [45.58, -73.64], [45.58, -73.7]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_3c34039cf54b85c79e068eaffedb9552 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_2c4438f82a654b945faf83401a679ed4 = $(`<div id="html_2c4438f82a654b945faf83401a679ed4" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Ahuntsic-Cartierville         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 1131</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 187</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.165</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_3c34039cf54b85c79e068eaffedb9552.setContent(html_2c4438f82a654b945faf83401a679ed4);
+            
+        
+
+        polygon_8374e258619fa4a6963968c2fe4f2d58.bindPopup(popup_3c34039cf54b85c79e068eaffedb9552)
+        ;
+
+        
+    
+    
+            polygon_8374e258619fa4a6963968c2fe4f2d58.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Ahuntsic-Cartierville
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.165<br>
+            <strong>Details:</strong> 187 violations / 1131 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_710866dafbc7b7f4df3a0c9260e5220d = L.polygon(
+                [[45.47, -73.65], [45.47, -73.59], [45.51, -73.59], [45.51, -73.65]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#91bfdb", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_cdd064e183f842261ffefc2459100047 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_73109d4dd7b40ed0b683a22d3cd80a29 = $(`<div id="html_73109d4dd7b40ed0b683a22d3cd80a29" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Côte-des-Neiges–Notre-Dame-de-Grâce         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 2194</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 639</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #91bfdb; font-size: 18px;">                0.291</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_cdd064e183f842261ffefc2459100047.setContent(html_73109d4dd7b40ed0b683a22d3cd80a29);
+            
+        
+
+        polygon_710866dafbc7b7f4df3a0c9260e5220d.bindPopup(popup_cdd064e183f842261ffefc2459100047)
+        ;
+
+        
+    
+    
+            polygon_710866dafbc7b7f4df3a0c9260e5220d.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Côte-des-Neiges–Notre-Dame-de-Grâce
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.291<br>
+            <strong>Details:</strong> 639 violations / 2194 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_a1e72ba3c3f0f94ff07e8b00b6888a3a = L.polygon(
+                [[45.46, -73.58], [45.46, -73.54], [45.485, -73.54], [45.485, -73.58]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_6c9ef31904be9f50411c007a77a6cbe9 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_f1a93355b32a1fe8c80e453b04bcc51c = $(`<div id="html_f1a93355b32a1fe8c80e453b04bcc51c" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Le Sud-Ouest         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 1034</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 173</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.167</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_6c9ef31904be9f50411c007a77a6cbe9.setContent(html_f1a93355b32a1fe8c80e453b04bcc51c);
+            
+        
+
+        polygon_a1e72ba3c3f0f94ff07e8b00b6888a3a.bindPopup(popup_6c9ef31904be9f50411c007a77a6cbe9)
+        ;
+
+        
+    
+    
+            polygon_a1e72ba3c3f0f94ff07e8b00b6888a3a.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Le Sud-Ouest
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.167<br>
+            <strong>Details:</strong> 173 violations / 1034 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_b33b3ab0c508db15f597ef13219d5fcd = L.polygon(
+                [[45.445, -73.58], [45.445, -73.54], [45.47, -73.54], [45.47, -73.58]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#91bfdb", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_2e38e328a1bdffd217b25a6ccc3461bd = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_982dfacd3ea0a8b1c239e8a9b7b9179e = $(`<div id="html_982dfacd3ea0a8b1c239e8a9b7b9179e" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Verdun         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 389</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 114</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #91bfdb; font-size: 18px;">                0.293</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_2e38e328a1bdffd217b25a6ccc3461bd.setContent(html_982dfacd3ea0a8b1c239e8a9b7b9179e);
+            
+        
+
+        polygon_b33b3ab0c508db15f597ef13219d5fcd.bindPopup(popup_2e38e328a1bdffd217b25a6ccc3461bd)
+        ;
+
+        
+    
+    
+            polygon_b33b3ab0c508db15f597ef13219d5fcd.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Verdun
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.293<br>
+            <strong>Details:</strong> 114 violations / 389 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_2f5234b329b5058f3686251fa52942e1 = L.polygon(
+                [[45.535, -73.56], [45.535, -73.5], [45.57, -73.5], [45.57, -73.56]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_b3070ef7375651540ea6be5b211ebe74 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_f21e3445ed352e9c7078ad55f806ea76 = $(`<div id="html_f21e3445ed352e9c7078ad55f806ea76" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Mercier–Hochelaga-Maisonneuve         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 1098</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 166</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.151</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_b3070ef7375651540ea6be5b211ebe74.setContent(html_f21e3445ed352e9c7078ad55f806ea76);
+            
+        
+
+        polygon_2f5234b329b5058f3686251fa52942e1.bindPopup(popup_b3070ef7375651540ea6be5b211ebe74)
+        ;
+
+        
+    
+    
+            polygon_2f5234b329b5058f3686251fa52942e1.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Mercier–Hochelaga-Maisonneuve
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.151<br>
+            <strong>Details:</strong> 166 violations / 1098 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_1a7b0b0fb7be468b3f76bbe2eaa6762b = L.polygon(
+                [[45.58, -73.62], [45.58, -73.58], [45.61, -73.58], [45.61, -73.62]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_9ef9fdffc064bbc950b54fbf97eeceec = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_636b1d28e639783cbecd3a928ec2729c = $(`<div id="html_636b1d28e639783cbecd3a928ec2729c" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Saint-Léonard         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 583</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 74</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.127</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_9ef9fdffc064bbc950b54fbf97eeceec.setContent(html_636b1d28e639783cbecd3a928ec2729c);
+            
+        
+
+        polygon_1a7b0b0fb7be468b3f76bbe2eaa6762b.bindPopup(popup_9ef9fdffc064bbc950b54fbf97eeceec)
+        ;
+
+        
+    
+    
+            polygon_1a7b0b0fb7be468b3f76bbe2eaa6762b.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Saint-Léonard
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.127<br>
+            <strong>Details:</strong> 74 violations / 583 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_20908d678112dba063fd750e558fefb0 = L.polygon(
+                [[45.595, -73.595], [45.595, -73.555], [45.625, -73.555], [45.625, -73.595]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#91bfdb", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_13b306e779b4d4bc6b6c0c04a8295648 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_a51533aa9812e340ba36b15395b9fe9a = $(`<div id="html_a51533aa9812e340ba36b15395b9fe9a" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Anjou         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 287</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 70</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #91bfdb; font-size: 18px;">                0.244</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_13b306e779b4d4bc6b6c0c04a8295648.setContent(html_a51533aa9812e340ba36b15395b9fe9a);
+            
+        
+
+        polygon_20908d678112dba063fd750e558fefb0.bindPopup(popup_13b306e779b4d4bc6b6c0c04a8295648)
+        ;
+
+        
+    
+    
+            polygon_20908d678112dba063fd750e558fefb0.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Anjou
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.244<br>
+            <strong>Details:</strong> 70 violations / 287 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_53885ea34ae1062b01b9980677c2c569 = L.polygon(
+                [[45.635, -73.56], [45.635, -73.48], [45.675, -73.48], [45.675, -73.56]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_3757517f4f87bfb7a487f7f24af35c8d = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_50e9392314761f19311a38704572b442 = $(`<div id="html_50e9392314761f19311a38704572b442" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Rivière-des-Prairies–Pointe-aux-Trembles         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 450</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 37</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.082</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_3757517f4f87bfb7a487f7f24af35c8d.setContent(html_50e9392314761f19311a38704572b442);
+            
+        
+
+        polygon_53885ea34ae1062b01b9980677c2c569.bindPopup(popup_3757517f4f87bfb7a487f7f24af35c8d)
+        ;
+
+        
+    
+    
+            polygon_53885ea34ae1062b01b9980677c2c569.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Rivière-des-Prairies–Pointe-aux-Trembles
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.082<br>
+            <strong>Details:</strong> 37 violations / 450 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_dd6cfbbdd59edfb178ebf2afb60f0e7d = L.polygon(
+                [[45.605, -73.65], [45.605, -73.61], [45.635, -73.61], [45.635, -73.65]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_fd90bd9902bf796882306536f78bb644 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_d4890fcef9bd6ddb898b37ee01495cc8 = $(`<div id="html_d4890fcef9bd6ddb898b37ee01495cc8" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Montréal-Nord         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 266</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 53</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.199</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_fd90bd9902bf796882306536f78bb644.setContent(html_d4890fcef9bd6ddb898b37ee01495cc8);
+            
+        
+
+        polygon_dd6cfbbdd59edfb178ebf2afb60f0e7d.bindPopup(popup_fd90bd9902bf796882306536f78bb644)
+        ;
+
+        
+    
+    
+            polygon_dd6cfbbdd59edfb178ebf2afb60f0e7d.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Montréal-Nord
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.199<br>
+            <strong>Details:</strong> 53 violations / 266 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_61a7c09d93133af3db411047b6e62099 = L.polygon(
+                [[45.505, -73.75], [45.505, -73.7], [45.545, -73.7], [45.545, -73.75]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#ffffbf", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_da1ad9237adef1ea55ce75c2e37cf6b8 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_236604cb70e9a5c65fa342bbdd33a6af = $(`<div id="html_236604cb70e9a5c65fa342bbdd33a6af" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Saint-Laurent         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 366</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 161</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #ffffbf; font-size: 18px;">                0.440</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_da1ad9237adef1ea55ce75c2e37cf6b8.setContent(html_236604cb70e9a5c65fa342bbdd33a6af);
+            
+        
+
+        polygon_61a7c09d93133af3db411047b6e62099.bindPopup(popup_da1ad9237adef1ea55ce75c2e37cf6b8)
+        ;
+
+        
+    
+    
+            polygon_61a7c09d93133af3db411047b6e62099.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Saint-Laurent
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.440<br>
+            <strong>Details:</strong> 161 violations / 366 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_9f5acf81934112df2ce08feb27ef2224 = L.polygon(
+                [[45.475, -73.9], [45.475, -73.82], [45.515, -73.82], [45.515, -73.9]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_68ed11873d17657df04c98e8884eec6b = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_d4c847104e23e53d2512bc13cfaf7b2b = $(`<div id="html_d4c847104e23e53d2512bc13cfaf7b2b" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Pierrefonds-Roxboro         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 518</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 90</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.174</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_68ed11873d17657df04c98e8884eec6b.setContent(html_d4c847104e23e53d2512bc13cfaf7b2b);
+            
+        
+
+        polygon_9f5acf81934112df2ce08feb27ef2224.bindPopup(popup_68ed11873d17657df04c98e8884eec6b)
+        ;
+
+        
+    
+    
+            polygon_9f5acf81934112df2ce08feb27ef2224.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Pierrefonds-Roxboro
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.174<br>
+            <strong>Details:</strong> 90 violations / 518 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_da6c7fa3b627c7cb501aba8e05fcfedf = L.polygon(
+                [[45.44, -73.95], [45.44, -73.88], [45.48, -73.88], [45.48, -73.95]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_1e1d669641c6e1adc28600420a0ac7f8 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_dd6ee64f86f5b74bfcec2eae26648c75 = $(`<div id="html_dd6ee64f86f5b74bfcec2eae26648c75" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 L'Île-Bizard–Sainte-Geneviève         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 46</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 6</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.130</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_1e1d669641c6e1adc28600420a0ac7f8.setContent(html_dd6ee64f86f5b74bfcec2eae26648c75);
+            
+        
+
+        polygon_da6c7fa3b627c7cb501aba8e05fcfedf.bindPopup(popup_1e1d669641c6e1adc28600420a0ac7f8)
+        ;
+
+        
+    
+    
+            polygon_da6c7fa3b627c7cb501aba8e05fcfedf.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 L'Île-Bizard–Sainte-Geneviève
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.130<br>
+            <strong>Details:</strong> 6 violations / 46 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_478ef548e35de0ed0db274c52646d48c = L.polygon(
+                [[45.415, -73.7], [45.415, -73.65], [45.445, -73.65], [45.445, -73.7]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_33350d04261bca188a653028655dd112 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_d3665b89458afaeebe60afd2ac3d0d46 = $(`<div id="html_d3665b89458afaeebe60afd2ac3d0d46" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Lachine         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 428</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 61</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.143</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_33350d04261bca188a653028655dd112.setContent(html_d3665b89458afaeebe60afd2ac3d0d46);
+            
+        
+
+        polygon_478ef548e35de0ed0db274c52646d48c.bindPopup(popup_33350d04261bca188a653028655dd112)
+        ;
+
+        
+    
+    
+            polygon_478ef548e35de0ed0db274c52646d48c.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Lachine
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.143<br>
+            <strong>Details:</strong> 61 violations / 428 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_29d257cc4dc1a99f7fc7ff5bee8ab1e7 = L.polygon(
+                [[45.395, -73.65], [45.395, -73.6], [45.425, -73.6], [45.425, -73.65]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#91bfdb", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_7815e522f4f26736f928ca4c17094892 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_7fbe35182ab03380638d39dc48c5b36b = $(`<div id="html_7fbe35182ab03380638d39dc48c5b36b" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 LaSalle         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 97</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 27</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #91bfdb; font-size: 18px;">                0.278</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_7815e522f4f26736f928ca4c17094892.setContent(html_7fbe35182ab03380638d39dc48c5b36b);
+            
+        
+
+        polygon_29d257cc4dc1a99f7fc7ff5bee8ab1e7.bindPopup(popup_7815e522f4f26736f928ca4c17094892)
+        ;
+
+        
+    
+    
+            polygon_29d257cc4dc1a99f7fc7ff5bee8ab1e7.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 LaSalle
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.278<br>
+            <strong>Details:</strong> 27 violations / 97 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_d5ce1788ac2a4933a31d63b78b49a3e5 = L.polygon(
+                [[45.48, -73.59], [45.48, -73.53], [45.515, -73.53], [45.515, -73.59]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#91bfdb", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_79682574e0b60a0ee43276f9d86ce29c = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_54e0372615f13217b6c21b79017720fe = $(`<div id="html_54e0372615f13217b6c21b79017720fe" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 Greater Downtown         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 766</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 209</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #91bfdb; font-size: 18px;">                0.273</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_79682574e0b60a0ee43276f9d86ce29c.setContent(html_54e0372615f13217b6c21b79017720fe);
+            
+        
+
+        polygon_d5ce1788ac2a4933a31d63b78b49a3e5.bindPopup(popup_79682574e0b60a0ee43276f9d86ce29c)
+        ;
+
+        
+    
+    
+            polygon_d5ce1788ac2a4933a31d63b78b49a3e5.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 Greater Downtown
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.273<br>
+            <strong>Details:</strong> 209 violations / 766 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_0e2b8463efa3beee710cb2a1babad72c = L.polygon(
+                [[45.5, -73.53], [45.5, -73.48], [45.57, -73.48], [45.57, -73.53]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_c41e21a016b76d09bd1ad7945f12a9e0 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_a23767df2011961df36e853664202d61 = $(`<div id="html_a23767df2011961df36e853664202d61" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 East Montreal         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 24</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 0</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.000</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_c41e21a016b76d09bd1ad7945f12a9e0.setContent(html_a23767df2011961df36e853664202d61);
+            
+        
+
+        polygon_0e2b8463efa3beee710cb2a1babad72c.bindPopup(popup_c41e21a016b76d09bd1ad7945f12a9e0)
+        ;
+
+        
+    
+    
+            polygon_0e2b8463efa3beee710cb2a1babad72c.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 East Montreal
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.000<br>
+            <strong>Details:</strong> 0 violations / 24 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_2d2525da5e7ea09b0df51c7207f821a3 = L.polygon(
+                [[45.45, -73.75], [45.45, -73.65], [45.52, -73.65], [45.52, -73.75]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#91bfdb", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_a0ec21e87c497bf716062b0c99ebdbf9 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_756a318c3bea166ad0057249fab95b8f = $(`<div id="html_756a318c3bea166ad0057249fab95b8f" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 West Montreal         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 1546</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 474</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #91bfdb; font-size: 18px;">                0.307</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_a0ec21e87c497bf716062b0c99ebdbf9.setContent(html_756a318c3bea166ad0057249fab95b8f);
+            
+        
+
+        polygon_2d2525da5e7ea09b0df51c7207f821a3.bindPopup(popup_a0ec21e87c497bf716062b0c99ebdbf9)
+        ;
+
+        
+    
+    
+            polygon_2d2525da5e7ea09b0df51c7207f821a3.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 West Montreal
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.307<br>
+            <strong>Details:</strong> 474 violations / 1546 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_c88b9f3f46f32e24a238a4193f74aba7 = L.polygon(
+                [[45.57, -73.7], [45.57, -73.6], [45.62, -73.6], [45.62, -73.7]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_0a3868fccb116a086c22dd6f538d4d65 = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_bea017fa69eaa722601fac3ceb69164d = $(`<div id="html_bea017fa69eaa722601fac3ceb69164d" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 North Montreal         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 621</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 111</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.179</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_0a3868fccb116a086c22dd6f538d4d65.setContent(html_bea017fa69eaa722601fac3ceb69164d);
+            
+        
+
+        polygon_c88b9f3f46f32e24a238a4193f74aba7.bindPopup(popup_0a3868fccb116a086c22dd6f538d4d65)
+        ;
+
+        
+    
+    
+            polygon_c88b9f3f46f32e24a238a4193f74aba7.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 North Montreal
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.179<br>
+            <strong>Details:</strong> 111 violations / 621 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var polygon_28e7c24461656fa7d8ee333b31194669 = L.polygon(
+                [[45.4, -73.62], [45.4, -73.53], [45.46, -73.53], [45.46, -73.62]],
+                {"bubblingMouseEvents": true, "color": "#333333", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "#1a9850", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "noClip": false, "opacity": 0.8, "smoothFactor": 1.0, "stroke": true, "weight": 2}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_5d7f6623bfe693fccd6d22b7b411b99e = L.popup({"maxWidth": 350});
+
+        
+            
+                var html_b3d6be6c46118bec456e7277ddce9411 = $(`<div id="html_b3d6be6c46118bec456e7277ddce9411" style="width: 100.0%; height: 100.0%;">     <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">         <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px;                     border-bottom: 3px solid #3498db; padding-bottom: 8px;">             📍 South Montreal         </h2>         <div style="font-size: 15px; line-height: 1.6;">             <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> 575</p>             <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> 80</p>             <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong>                 <span style="font-weight: bold; color: #1a9850; font-size: 18px;">                0.139</span>             </p>         </div>     </div>     </div>`)[0];
+                popup_5d7f6623bfe693fccd6d22b7b411b99e.setContent(html_b3d6be6c46118bec456e7277ddce9411);
+            
+        
+
+        polygon_28e7c24461656fa7d8ee333b31194669.bindPopup(popup_5d7f6623bfe693fccd6d22b7b411b99e)
+        ;
+
+        
+    
+    
+            polygon_28e7c24461656fa7d8ee333b31194669.bindTooltip(
+                `<div>
+                     
+    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
+                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
+        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
+            📍 South Montreal
+        </div>
+        <div style="font-size: 14px; color: #34495e;">
+            <strong>Violation Ratio:</strong> 0.139<br>
+            <strong>Details:</strong> 80 violations / 575 establishments
+        </div>
+    </div>
+    
+                 </div>`,
+                {"sticky": true}
+            );
+        
+    
+            var circle_marker_cad3c95cef4a9d4792d7f44275e1b06e = L.circleMarker(
+                [45.500807, -73.572139],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_71e16f6185461377bafaa966deaceb3e = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_63374053991c1cff0b3787e480b674bd = $(`<div id="html_63374053991c1cff0b3787e480b674bd" style="width: 100.0%; height: 100.0%;">Business: Restaurant service rapide<br>Neighborhood: Ville-Marie</div>`)[0];
+                popup_71e16f6185461377bafaa966deaceb3e.setContent(html_63374053991c1cff0b3787e480b674bd);
+            
+        
+
+        circle_marker_cad3c95cef4a9d4792d7f44275e1b06e.bindPopup(popup_71e16f6185461377bafaa966deaceb3e)
+        ;
+
+        
+    
+    
+            var circle_marker_5fff72b620008e5d297ed0df59701785 = L.circleMarker(
+                [45.496057, -73.57121],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_8b8e13c85f5ff550eb16c53b4b60d2c6 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_ff799d559f93b8034345f6fe4cd5979b = $(`<div id="html_ff799d559f93b8034345f6fe4cd5979b" style="width: 100.0%; height: 100.0%;">Business: Restaurant service rapide<br>Neighborhood: Ville-Marie</div>`)[0];
+                popup_8b8e13c85f5ff550eb16c53b4b60d2c6.setContent(html_ff799d559f93b8034345f6fe4cd5979b);
+            
+        
+
+        circle_marker_5fff72b620008e5d297ed0df59701785.bindPopup(popup_8b8e13c85f5ff550eb16c53b4b60d2c6)
+        ;
+
+        
+    
+    
+            var circle_marker_1c434e5b4085da483dec0979b0bca437 = L.circleMarker(
+                [45.498063, -73.626161],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_6fe417ea7b19d538ecdefd9d71a393d7 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_2a3489c26a6b8f203fb401eab0e156b5 = $(`<div id="html_2a3489c26a6b8f203fb401eab0e156b5" style="width: 100.0%; height: 100.0%;">Business: Restaurant<br>Neighborhood: Côte-des-Neiges–Notre-Dame-de-Grâce</div>`)[0];
+                popup_6fe417ea7b19d538ecdefd9d71a393d7.setContent(html_2a3489c26a6b8f203fb401eab0e156b5);
+            
+        
+
+        circle_marker_1c434e5b4085da483dec0979b0bca437.bindPopup(popup_6fe417ea7b19d538ecdefd9d71a393d7)
+        ;
+
+        
+    
+    
+            var circle_marker_8c61d5e568b3934ac203244490f6d5a0 = L.circleMarker(
+                [45.599054, -73.568533],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_cf00c1fb02e7edf695d711dd63b0f478 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_a2a3e459137227515f050040d3927a55 = $(`<div id="html_a2a3e459137227515f050040d3927a55" style="width: 100.0%; height: 100.0%;">Business: Restaurant<br>Neighborhood: Anjou</div>`)[0];
+                popup_cf00c1fb02e7edf695d711dd63b0f478.setContent(html_a2a3e459137227515f050040d3927a55);
+            
+        
+
+        circle_marker_8c61d5e568b3934ac203244490f6d5a0.bindPopup(popup_cf00c1fb02e7edf695d711dd63b0f478)
+        ;
+
+        
+    
+    
+            var circle_marker_97cafff78bbfa6acc2968cfbdf737afe = L.circleMarker(
+                [45.481277, -73.631301],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_7e3afbff8db5a120a87412767314fa30 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_f04b1b6c757a24d7704ab7c6ce0bb7be = $(`<div id="html_f04b1b6c757a24d7704ab7c6ce0bb7be" style="width: 100.0%; height: 100.0%;">Business: Épicerie avec préparation<br>Neighborhood: Côte-des-Neiges–Notre-Dame-de-Grâce</div>`)[0];
+                popup_7e3afbff8db5a120a87412767314fa30.setContent(html_f04b1b6c757a24d7704ab7c6ce0bb7be);
+            
+        
+
+        circle_marker_97cafff78bbfa6acc2968cfbdf737afe.bindPopup(popup_7e3afbff8db5a120a87412767314fa30)
+        ;
+
+        
+    
+    
+            var circle_marker_cf8f696ee00c6dd436f6de20966e610f = L.circleMarker(
+                [45.514506, -73.573895],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_199a1b543133fe6b1421b03203779c25 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_ba86345c41e5d3271954032564fe0fb2 = $(`<div id="html_ba86345c41e5d3271954032564fe0fb2" style="width: 100.0%; height: 100.0%;">Business: Restaurant service rapide<br>Neighborhood: Ville-Marie</div>`)[0];
+                popup_199a1b543133fe6b1421b03203779c25.setContent(html_ba86345c41e5d3271954032564fe0fb2);
+            
+        
+
+        circle_marker_cf8f696ee00c6dd436f6de20966e610f.bindPopup(popup_199a1b543133fe6b1421b03203779c25)
+        ;
+
+        
+    
+    
+            var circle_marker_c2badc17f72047d0bb4c66cc180bb1b2 = L.circleMarker(
+                [45.579488, -73.620583],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_c3a049bf938630d80234ce0b27ca8b1e = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_9b820509521390d0121ab2bbbb738529 = $(`<div id="html_9b820509521390d0121ab2bbbb738529" style="width: 100.0%; height: 100.0%;">Business: Bar salon, taverne<br>Neighborhood: North Montreal</div>`)[0];
+                popup_c3a049bf938630d80234ce0b27ca8b1e.setContent(html_9b820509521390d0121ab2bbbb738529);
+            
+        
+
+        circle_marker_c2badc17f72047d0bb4c66cc180bb1b2.bindPopup(popup_c3a049bf938630d80234ce0b27ca8b1e)
+        ;
+
+        
+    
+    
+            var circle_marker_c23fc5e2a29f145754422613efea3da9 = L.circleMarker(
+                [45.488803, -73.870911],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_7a21e2ad3259dedebb4f75019ad0764c = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_71fd1a303694bf3e07a8e975dac35e8c = $(`<div id="html_71fd1a303694bf3e07a8e975dac35e8c" style="width: 100.0%; height: 100.0%;">Business: Restaurant<br>Neighborhood: Pierrefonds-Roxboro</div>`)[0];
+                popup_7a21e2ad3259dedebb4f75019ad0764c.setContent(html_71fd1a303694bf3e07a8e975dac35e8c);
+            
+        
+
+        circle_marker_c23fc5e2a29f145754422613efea3da9.bindPopup(popup_7a21e2ad3259dedebb4f75019ad0764c)
+        ;
+
+        
+    
+    
+            var circle_marker_c6e2e334ea1df52dedfb97b236910572 = L.circleMarker(
+                [45.504701, -73.57116],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_4d78ba66b83f1a29ce9051ff4eb05104 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_9fda99ca548dbf9b53aee2ab88101d69 = $(`<div id="html_9fda99ca548dbf9b53aee2ab88101d69" style="width: 100.0%; height: 100.0%;">Business: Organisme d'aide alimentaire<br>Neighborhood: Ville-Marie</div>`)[0];
+                popup_4d78ba66b83f1a29ce9051ff4eb05104.setContent(html_9fda99ca548dbf9b53aee2ab88101d69);
+            
+        
+
+        circle_marker_c6e2e334ea1df52dedfb97b236910572.bindPopup(popup_4d78ba66b83f1a29ce9051ff4eb05104)
+        ;
+
+        
+    
+    
+            var circle_marker_e62cf00216186676e17cbf160ca3b6fa = L.circleMarker(
+                [45.507489, -73.565894],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_f25d662da95d368baee6976a440af93a = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_609083e79fead5722bd5ce24f276c51f = $(`<div id="html_609083e79fead5722bd5ce24f276c51f" style="width: 100.0%; height: 100.0%;">Business: Restaurant<br>Neighborhood: Ville-Marie</div>`)[0];
+                popup_f25d662da95d368baee6976a440af93a.setContent(html_609083e79fead5722bd5ce24f276c51f);
+            
+        
+
+        circle_marker_e62cf00216186676e17cbf160ca3b6fa.bindPopup(popup_f25d662da95d368baee6976a440af93a)
+        ;
+
+        
+    
+    
+            var circle_marker_acd6c871c3ba96296f2914617b216a33 = L.circleMarker(
+                [45.584196, -73.580751],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_3623c505c785c211abf692dee92f1d7c = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_3e92af56b3039568b1ef92461dfa4156 = $(`<div id="html_3e92af56b3039568b1ef92461dfa4156" style="width: 100.0%; height: 100.0%;">Business: Restaurant<br>Neighborhood: Saint-Léonard</div>`)[0];
+                popup_3623c505c785c211abf692dee92f1d7c.setContent(html_3e92af56b3039568b1ef92461dfa4156);
+            
+        
+
+        circle_marker_acd6c871c3ba96296f2914617b216a33.bindPopup(popup_3623c505c785c211abf692dee92f1d7c)
+        ;
+
+        
+    
+    
+            var circle_marker_2869378d92c8488bc590a1eac3952ead = L.circleMarker(
+                [45.509598, -73.564056],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_e1b1e29556f7fc729d4322d32b04bfb0 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_8c9fd7d1dc130dc51082da1ed23a8609 = $(`<div id="html_8c9fd7d1dc130dc51082da1ed23a8609" style="width: 100.0%; height: 100.0%;">Business: Restaurant<br>Neighborhood: Ville-Marie</div>`)[0];
+                popup_e1b1e29556f7fc729d4322d32b04bfb0.setContent(html_8c9fd7d1dc130dc51082da1ed23a8609);
+            
+        
+
+        circle_marker_2869378d92c8488bc590a1eac3952ead.bindPopup(popup_e1b1e29556f7fc729d4322d32b04bfb0)
+        ;
+
+        
+    
+    
+            var circle_marker_b8ec19f57c058922dc84f1311cff8f6d = L.circleMarker(
+                [45.473795, -73.624444],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_1e50ed27124014c9e0fd81fdbf34d53f = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_c5b009a92551ec64efa2eba17be6d8e7 = $(`<div id="html_c5b009a92551ec64efa2eba17be6d8e7" style="width: 100.0%; height: 100.0%;">Business: Cafétéria<br>Neighborhood: Côte-des-Neiges–Notre-Dame-de-Grâce</div>`)[0];
+                popup_1e50ed27124014c9e0fd81fdbf34d53f.setContent(html_c5b009a92551ec64efa2eba17be6d8e7);
+            
+        
+
+        circle_marker_b8ec19f57c058922dc84f1311cff8f6d.bindPopup(popup_1e50ed27124014c9e0fd81fdbf34d53f)
+        ;
+
+        
+    
+    
+            var circle_marker_39f8feabcd73ff4ba7efee4fedb73125 = L.circleMarker(
+                [45.556123, -73.550167],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_17810206c1fa1a6f2998249c827a8a39 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_9d8c9eeecb4b156c963151eb91285c95 = $(`<div id="html_9d8c9eeecb4b156c963151eb91285c95" style="width: 100.0%; height: 100.0%;">Business: Restaurant<br>Neighborhood: Mercier–Hochelaga-Maisonneuve</div>`)[0];
+                popup_17810206c1fa1a6f2998249c827a8a39.setContent(html_9d8c9eeecb4b156c963151eb91285c95);
+            
+        
+
+        circle_marker_39f8feabcd73ff4ba7efee4fedb73125.bindPopup(popup_17810206c1fa1a6f2998249c827a8a39)
+        ;
+
+        
+    
+    
+            var circle_marker_39f807e5e78f7bb337ef47e3749d60dd = L.circleMarker(
+                [45.507503, -73.661825],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_8bfa54cdc7da857fa74dc53152130175 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_aadff7e88be4539c79c284114f40bb7d = $(`<div id="html_aadff7e88be4539c79c284114f40bb7d" style="width: 100.0%; height: 100.0%;">Business: Supermarché<br>Neighborhood: West Montreal</div>`)[0];
+                popup_8bfa54cdc7da857fa74dc53152130175.setContent(html_aadff7e88be4539c79c284114f40bb7d);
+            
+        
+
+        circle_marker_39f807e5e78f7bb337ef47e3749d60dd.bindPopup(popup_8bfa54cdc7da857fa74dc53152130175)
+        ;
+
+        
+    
+    
+            var circle_marker_91f586cae1e028e91914fc0ce854325a = L.circleMarker(
+                [45.500807, -73.572139],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_3cde11d27961ad82d48fc0163c46b830 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_01221595418d76e68408a2747353b9ce = $(`<div id="html_01221595418d76e68408a2747353b9ce" style="width: 100.0%; height: 100.0%;">Business: Restaurant<br>Neighborhood: Ville-Marie</div>`)[0];
+                popup_3cde11d27961ad82d48fc0163c46b830.setContent(html_01221595418d76e68408a2747353b9ce);
+            
+        
+
+        circle_marker_91f586cae1e028e91914fc0ce854325a.bindPopup(popup_3cde11d27961ad82d48fc0163c46b830)
+        ;
+
+        
+    
+    
+            var circle_marker_81eed4c5c661a0aafa53fb3c521d015d = L.circleMarker(
+                [45.496929, -73.704639],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_0591516586472ec988f9df539bb71a0e = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_75c9009f05a174d8ece3146b1fa20ec8 = $(`<div id="html_75c9009f05a174d8ece3146b1fa20ec8" style="width: 100.0%; height: 100.0%;">Business: Restaurant<br>Neighborhood: West Montreal</div>`)[0];
+                popup_0591516586472ec988f9df539bb71a0e.setContent(html_75c9009f05a174d8ece3146b1fa20ec8);
+            
+        
+
+        circle_marker_81eed4c5c661a0aafa53fb3c521d015d.bindPopup(popup_0591516586472ec988f9df539bb71a0e)
+        ;
+
+        
+    
+    
+            var circle_marker_2cdd5b871f5905fa49785e70edcbf477 = L.circleMarker(
+                [45.600837, -73.610184],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_70e9cf688b0e3e5d80387c5f7480bc31 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_78a812e9ed89e7ad5dd7b73ead5803c7 = $(`<div id="html_78a812e9ed89e7ad5dd7b73ead5803c7" style="width: 100.0%; height: 100.0%;">Business: Restaurant<br>Neighborhood: Saint-Léonard</div>`)[0];
+                popup_70e9cf688b0e3e5d80387c5f7480bc31.setContent(html_78a812e9ed89e7ad5dd7b73ead5803c7);
+            
+        
+
+        circle_marker_2cdd5b871f5905fa49785e70edcbf477.bindPopup(popup_70e9cf688b0e3e5d80387c5f7480bc31)
+        ;
+
+        
+    
+    
+            var circle_marker_54c439d958aaf7e8d4471f10fc888876 = L.circleMarker(
+                [45.523439, -73.605738],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_121ba459d50086eaaa0a166ef5f0a350 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_260d655f5edc2f2e51db7ec9d7eabc82 = $(`<div id="html_260d655f5edc2f2e51db7ec9d7eabc82" style="width: 100.0%; height: 100.0%;">Business: Restaurant<br>Neighborhood: Outremont</div>`)[0];
+                popup_121ba459d50086eaaa0a166ef5f0a350.setContent(html_260d655f5edc2f2e51db7ec9d7eabc82);
+            
+        
+
+        circle_marker_54c439d958aaf7e8d4471f10fc888876.bindPopup(popup_121ba459d50086eaaa0a166ef5f0a350)
+        ;
+
+        
+    
+    
+            var circle_marker_d1037531024b171c0dfb2b84ce4bcf61 = L.circleMarker(
+                [45.519158, -73.557645],
+                {"bubblingMouseEvents": true, "color": "red", "dashArray": null, "dashOffset": null, "fill": true, "fillColor": "red", "fillOpacity": 0.7, "fillRule": "evenodd", "lineCap": "round", "lineJoin": "round", "opacity": 1.0, "radius": 3, "stroke": true, "weight": 3}
+            ).addTo(map_2e691716c8f257b77cc34bf7a7822c0d);
+        
+    
+        var popup_8a58f29fc868e07a9a757629a69b20f8 = L.popup({"maxWidth": "100%"});
+
+        
+            
+                var html_7cdc0e975ca50520789b901349f9cbae = $(`<div id="html_7cdc0e975ca50520789b901349f9cbae" style="width: 100.0%; height: 100.0%;">Business: Boulangerie<br>Neighborhood: Ville-Marie</div>`)[0];
+                popup_8a58f29fc868e07a9a757629a69b20f8.setContent(html_7cdc0e975ca50520789b901349f9cbae);
+            
+        
+
+        circle_marker_d1037531024b171c0dfb2b84ce4bcf61.bindPopup(popup_8a58f29fc868e07a9a757629a69b20f8)
+        ;
+
+        
+    
+</script>
+</html>
