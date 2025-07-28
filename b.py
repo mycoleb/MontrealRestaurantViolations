@@ -14,7 +14,7 @@ def create_business_violations_map():
     businesses_df = pd.read_csv('businesses_with_gps.csv')
     violations_df = pd.read_csv('violations_with_gps.csv')
     
-    # Clean and prepare the data
+    # Clean 
     print("Preparing data...")
     
     # Parse GPS coordinates for businesses

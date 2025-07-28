@@ -8,7 +8,7 @@ import base64
 from io import BytesIO
 warnings.filterwarnings('ignore')
 
-# Set style for better-looking plots
+# Set style for plots
 plt.style.use('seaborn-v0_8-darkgrid')
 sns.set_palette("husl")
 
@@ -375,7 +375,7 @@ neighborhood_stats = violations.groupby('neighborhood').agg({
 }).round(2)
 neighborhood_stats.columns = ['violation_count', 'total_fines', 'avg_fine']
 
-# Count businesses per neighborhood - FIXED: Create a copy of businesses DataFrame
+# Count businesses per neighborhood Create a copy of businesses DataFrame
 businesses_df = businesses.copy()  # Create a copy to avoid overwriting
 businesses_df['neighborhood'] = businesses_df.apply(lambda x: get_neighborhood(x['address'], x['city']), axis=1)
 businesses_per_neighborhood = businesses_df.groupby('neighborhood').size()

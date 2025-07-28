@@ -1,508 +1,791 @@
+#!/usr/bin/env python3
+"""
+Montreal Business Violations Neighborhood Analysis
+
+This script analyzes business violation data for Montreal, assigns businesses to
+neighborhoods, and creates an interactive map showing violation ratios by neighborhood.
+
+Requirements:
+    pip install pandas geopandas folium shapely requests
+
+Usage:
+    python montreal_analysis.py
+
+Files needed in the same directory:
+    - businesses_with_gps_corrected.csv
+    - violations_with_gps_corrected.csv
+"""
+
 import pandas as pd
-import folium
-import numpy as np
 import requests
+import folium
+from shapely.geometry import Point, Polygon
+import geopandas as gpd
+from collections import defaultdict
 import json
+import time
+from folium import plugins
+import os
+import sys
+import ssl
+from geopy.geocoders import Nominatim
+from sklearn.cluster import DBSCAN
+import numpy as np
 
-# Constants
-CHINATOWN_POLYGON = [
-    [45.509282, -73.561113],
-    [45.507696, -73.562595], 
-    [45.507041, -73.561215],
-    [45.505557, -73.562643],
-    [45.504930, -73.561120],
-    [45.508093, -73.558214]
-]
+# Disable SSL certificate verification for problematic sources
+ssl._create_default_https_context = ssl._create_unverified_context
 
-def point_in_polygon_simple(point, polygon_coords):
-    """Simple point-in-polygon check using ray casting"""
-    x, y = point[1], point[0]  # lng, lat
-    n = len(polygon_coords)
-    inside = False
+def load_data():
+    """Load the business and violations data from CSV files."""
+    print("Loading data...")
     
-    p1x, p1y = polygon_coords[0][1], polygon_coords[0][0]  # lng, lat
-    for i in range(1, n + 1):
-        p2x, p2y = polygon_coords[i % n][1], polygon_coords[i % n][0]
-        if y > min(p1y, p2y):
-            if y <= max(p1y, p2y):
-                if x <= max(p1x, p2x):
-                    if p1y != p2y:
-                        xinters = (y - p1y) * (p2x - p1x) / (p2y - p1y) + p1x
-                    if p1x == p2x or x <= xinters:
-                        inside = not inside
-        p1x, p1y = p2x, p2y
+    # Check if files exist
+    business_file = 'businesses_with_gps_corrected.csv'
+    violations_file = 'violations_with_gps_corrected.csv'
     
-    return inside
-
-def point_in_bounds(point, bounds):
-    """Check if a point is within rectangular bounds"""
-    lat, lng = point
-    return (bounds[0][0] <= lat <= bounds[1][0] and 
-            bounds[0][1] <= lng <= bounds[1][1])
-
-def get_color(ratio):
-    """Get color based on violation ratio"""
-    if ratio >= 0.8:
-        return '#d73027'
-    elif ratio >= 0.6:
-        return '#fc8d59'
-    elif ratio >= 0.4:
-        return '#ffffbf'
-    elif ratio >= 0.2:
-        return '#91bfdb'
-    else:
-        return '#1a9850'
-
-def safe_ratio(numerator, denominator):
-    """Calculate ratio safely, avoiding division by zero"""
-    return numerator / denominator if denominator > 0 else 0
-
-def generate_popup_html(name, businesses, violations, ratio):
-    """Generate HTML for neighborhood popup"""
-    emoji = "🏮" if name == "Chinatown" else "📍"
-    return f"""
-    <div style="font-family: Arial, sans-serif; width: 300px; padding: 10px;">
-        <h2 style="margin: 0 0 15px 0; color: #2c3e50; font-size: 20px; 
-                   border-bottom: 3px solid #3498db; padding-bottom: 8px;">
-            {emoji} {name}
-        </h2>
-        <div style="font-size: 15px; line-height: 1.6;">
-            <p style="margin: 10px 0;"><strong>🏪 Food Establishments:</strong> {businesses}</p>
-            <p style="margin: 10px 0;"><strong>⚠️ Health Violations:</strong> {violations}</p>
-            <p style="margin: 10px 0;"><strong>📊 Violation Ratio:</strong> 
-               <span style="font-weight: bold; color: {get_color(ratio)}; font-size: 18px;">
-               {ratio:.3f}</span>
-            </p>
-        </div>
-    </div>
-    """
-
-def generate_tooltip_html(name, businesses, violations, ratio):
-    """Generate HTML for neighborhood tooltip"""
-    emoji = "🏮" if name == "Chinatown" else "📍"
-    return f"""
-    <div style="font-family: Arial, sans-serif; padding: 8px; background: white; 
-                border-radius: 5px; box-shadow: 0 2px 5px rgba(0,0,0,0.2);">
-        <div style="font-size: 17px; font-weight: bold; color: #2c3e50; margin-bottom: 5px;">
-            {emoji} {name}
-        </div>
-        <div style="font-size: 14px; color: #34495e;">
-            <strong>Violation Ratio:</strong> {ratio:.3f}<br>
-            <strong>Details:</strong> {violations} violations / {businesses} establishments
-        </div>
-    </div>
-    """
-
-def create_expanded_fallback_neighborhoods():
-    """Create expanded fallback neighborhoods with better coverage"""
-    return {
-        "Ville-Marie": {
-            "bounds": [[45.485, -73.580], [45.520, -73.540]]
-        },
-        "Chinatown": {
-            "polygon": CHINATOWN_POLYGON
-        },
-        "Le Plateau-Mont-Royal": {
-            "bounds": [[45.510, -73.595], [45.535, -73.560]]
-        },
-        "Outremont": {
-            "bounds": [[45.515, -73.620], [45.535, -73.590]]
-        },
-        "Rosemont–La Petite-Patrie": {
-            "bounds": [[45.530, -73.595], [45.560, -73.565]]
-        },
-        "Villeray–Saint-Michel–Parc-Extension": {
-            "bounds": [[45.545, -73.640], [45.575, -73.600]]
-        },
-        "Ahuntsic-Cartierville": {
-            "bounds": [[45.540, -73.700], [45.580, -73.640]]
-        },
-        "Côte-des-Neiges–Notre-Dame-de-Grâce": {
-            "bounds": [[45.470, -73.650], [45.510, -73.590]]
-        },
-        "Le Sud-Ouest": {
-            "bounds": [[45.460, -73.580], [45.485, -73.540]]
-        },
-        "Verdun": {
-            "bounds": [[45.445, -73.580], [45.470, -73.540]]
-        },
-        "Mercier–Hochelaga-Maisonneuve": {
-            "bounds": [[45.535, -73.560], [45.570, -73.500]]
-        },
-        "Saint-Léonard": {
-            "bounds": [[45.580, -73.620], [45.610, -73.580]]
-        },
-        "Anjou": {
-            "bounds": [[45.595, -73.595], [45.625, -73.555]]
-        },
-        "Rivière-des-Prairies–Pointe-aux-Trembles": {
-            "bounds": [[45.635, -73.560], [45.675, -73.480]]
-        },
-        "Montréal-Nord": {
-            "bounds": [[45.605, -73.650], [45.635, -73.610]]
-        },
-        "Saint-Laurent": {
-            "bounds": [[45.505, -73.750], [45.545, -73.700]]
-        },
-        "Pierrefonds-Roxboro": {
-            "bounds": [[45.475, -73.900], [45.515, -73.820]]
-        },
-        "L'Île-Bizard–Sainte-Geneviève": {
-            "bounds": [[45.440, -73.950], [45.480, -73.880]]
-        },
-        "Lachine": {
-            "bounds": [[45.415, -73.700], [45.445, -73.650]]
-        },
-        "LaSalle": {
-            "bounds": [[45.395, -73.650], [45.425, -73.600]]
-        },
-        # Additional expanded coverage areas
-        "Greater Downtown": {
-            "bounds": [[45.480, -73.590], [45.515, -73.530]]
-        },
-        "East Montreal": {
-            "bounds": [[45.500, -73.530], [45.570, -73.480]]
-        },
-        "West Montreal": {
-            "bounds": [[45.450, -73.750], [45.520, -73.650]]
-        },
-        "North Montreal": {
-            "bounds": [[45.570, -73.700], [45.620, -73.600]]
-        },
-        "South Montreal": {
-            "bounds": [[45.400, -73.620], [45.460, -73.530]]
-        }
-    }
-
-def assign_neighborhood_improved(lat, lng, neighborhoods):
-    """Improved neighborhood assignment with better fallback"""
-    # Check Chinatown first (highest priority)
-    if point_in_polygon_simple([lat, lng], CHINATOWN_POLYGON):
-        return 'Chinatown'
+    if not os.path.exists(business_file):
+        print(f"Error: {business_file} not found in current directory")
+        return None, None
     
-    # Check other neighborhoods with bounds
-    for neighborhood, data in neighborhoods.items():
-        if neighborhood == 'Chinatown':
-            continue
-        if 'bounds' in data and point_in_bounds([lat, lng], data['bounds']):
-            return neighborhood
+    if not os.path.exists(violations_file):
+        print(f"Error: {violations_file} not found in current directory")
+        return None, None
     
-    return 'Other'
+    try:
+        # Load businesses data (using corrected GPS as primary, original as fallback)
+        businesses = pd.read_csv(business_file)
+        violations = pd.read_csv(violations_file)
+        
+        # Clean and prepare GPS coordinates
+        businesses = businesses.dropna(subset=['latitude', 'longitude'])
+        businesses = businesses[(businesses['latitude'] != 0) & (businesses['longitude'] != 0)]
+        
+        print(f"Loaded {len(businesses)} businesses with valid GPS coordinates")
+        print(f"Loaded {len(violations)} violations")
+        
+        return businesses, violations
+    
+    except Exception as e:
+        print(f"Error loading data: {e}")
+        return None, None
 
-def identify_food_establishments_flexible(businesses_df):
-    """More flexible food establishment identification"""
+def get_montreal_neighborhoods():
+    """Get Montreal neighborhood boundaries from Open Data Montreal API."""
+    print("Fetching Montreal neighborhood boundaries...")
     
-    # Expanded food keywords including French terms
-    food_keywords = [
-        # English terms
-        'restaurant', 'food', 'café', 'bar', 'bakery', 'grocery', 'market', 
-        'bistro', 'pizza', 'convenience', 'catering', 'deli', 'butcher',
-        'seafood', 'chicken', 'burger', 'sandwich', 'coffee', 'tea',
-        # French terms
-        'alimentaire', 'boulangerie', 'épicerie', 'marché', 'pizzeria', 
-        'dépanneur', 'traiteur', 'boucherie', 'poissonnerie', 'pâtisserie',
-        'fromagerie', 'charcuterie', 'brasserie', 'crêperie', 'sandwicherie'
+    # Try multiple Montreal Open Data API endpoints
+    urls = [
+        # Reference residential neighborhoods (quartiers de référence)
+        "https://donnees.montreal.ca/dataset/f38c91a1-e33f-4475-a112-3b84b1c60c1e/resource/a80e611f-5336-4306-ba2a-fd657f0f00fa/download/quartierreferencehabitation.geojson",
+        # Administrative boundaries (boroughs)
+        "https://donnees.montreal.ca/dataset/9797a946-9da8-41ec-8815-f6b276dec7e9/resource/e18bfd07-edc8-4ce8-8a5a-3b617662a794/download/limites-administratives-agglomeration.geojson",
+        # GitHub backup source
+        "https://raw.githubusercontent.com/blackmad/neighborhoods/master/montreal.geojson"
     ]
     
-    # Try different approaches to identify food establishments
-    food_establishments = pd.DataFrame()
-    
-    # Method 1: Direct keyword matching in 'type' column
-    if 'type' in businesses_df.columns:
-        food_mask = businesses_df['type'].str.lower().str.contains(
-            '|'.join(food_keywords), na=False, regex=True
-        )
-        food_establishments = businesses_df[food_mask].copy()
-        print(f"✅ Method 1 (type column): Found {len(food_establishments)} food establishments")
-    
-    # Method 2: If that fails, try other common column names
-    if len(food_establishments) == 0:
-        alternative_columns = ['category', 'business_type', 'sector', 'industry', 'description']
-        for col in alternative_columns:
-            if col in businesses_df.columns:
-                food_mask = businesses_df[col].str.lower().str.contains(
-                    '|'.join(food_keywords), na=False, regex=True
-                )
-                food_establishments = businesses_df[food_mask].copy()
-                print(f"✅ Method 2 ({col} column): Found {len(food_establishments)} food establishments")
-                if len(food_establishments) > 0:
-                    break
-    
-    # Method 3: If still no results, be more permissive and include all businesses
-    if len(food_establishments) == 0:
-        print("⚠️  No food establishments found with keyword matching. Using all businesses.")
-        food_establishments = businesses_df.copy()
-        print(f"✅ Method 3 (all businesses): Using {len(food_establishments)} establishments")
-    
-    return food_establishments
-
-def create_montreal_violations_map_fixed():
-    """Fixed version of Montreal violations map creator"""
-    
-    print("🗺️  Montreal Health Violations Map Generator (FIXED VERSION)")
-    print("=" * 60)
-    
-    # Load CSV files with better error handling
-    try:
-        businesses_df = pd.read_csv('businesses_with_gps.csv')
-        violations_df = pd.read_csv('violations_with_gps.csv')
-        print(f"✅ Loaded {len(businesses_df)} businesses and {len(violations_df)} violations")
-        
-        # Print column information
-        print(f"📊 Business columns: {list(businesses_df.columns)}")
-        print(f"📊 Violations columns: {list(violations_df.columns)}")
-        
-    except FileNotFoundError as e:
-        print(f"❌ Error: Could not find CSV files: {e}")
-        print("💡 Make sure you have 'businesses_with_gps.csv' and 'violations_with_gps.csv' in the current directory")
-        return None
-    
-    # Clean data more thoroughly
-    print(f"\n🧹 Cleaning data...")
-    original_business_count = len(businesses_df)
-    original_violation_count = len(violations_df)
-    
-    # Clean businesses data
-    businesses_df = businesses_df.dropna(subset=['latitude', 'longitude'])
-    print(f"   - Removed {original_business_count - len(businesses_df)} businesses without coordinates")
-    
-    # Clean violations data  
-    violations_df = violations_df.dropna(subset=['business_id'])
-    print(f"   - Removed {original_violation_count - len(violations_df)} violations without business_id")
-    
-    # Check coordinate validity (Montreal is around 45.5°N, 73.6°W)
-    valid_coords = (
-        (businesses_df['latitude'] >= 45.3) & (businesses_df['latitude'] <= 45.8) &
-        (businesses_df['longitude'] >= -74.0) & (businesses_df['longitude'] <= -73.3)
-    )
-    businesses_df = businesses_df[valid_coords]
-    print(f"   - Kept {len(businesses_df)} businesses with valid Montreal coordinates")
-    
-    if len(businesses_df) == 0:
-        print("❌ No businesses with valid coordinates found!")
-        return None
-    
-    # Use improved food establishment identification
-    food_establishments = identify_food_establishments_flexible(businesses_df)
-    
-    if len(food_establishments) == 0:
-        print("❌ No food establishments found!")
-        return None
-    
-    # Use expanded fallback neighborhoods for better coverage
-    neighborhoods = create_expanded_fallback_neighborhoods()
-    print(f"✅ Using {len(neighborhoods)} neighborhood boundaries")
-    
-    # Assign neighborhoods with improved method
-    print(f"\n🏘️  Assigning neighborhoods...")
-    food_establishments['neighborhood'] = food_establishments.apply(
-        lambda row: assign_neighborhood_improved(row['latitude'], row['longitude'], neighborhoods),
-        axis=1
-    )
-    
-    # Map violations to neighborhoods
-    print(f"⚠️  Mapping violations to neighborhoods...")
-    
-    # Create business lookup for faster access
-    business_lookup = food_establishments.set_index('business_id')[['latitude', 'longitude', 'neighborhood']].to_dict('index')
-    
-    violations_with_neighborhood = []
-    mapped_count = 0
-    
-    for _, violation in violations_df.iterrows():
-        business_id = violation['business_id']
-        if business_id in business_lookup:
-            violations_with_neighborhood.append({
-                'business_id': business_id,
-                'neighborhood': business_lookup[business_id]['neighborhood']
-            })
-            mapped_count += 1
-    
-    print(f"   - Successfully mapped {mapped_count} violations to neighborhoods")
-    
-    if mapped_count == 0:
-        print("❌ No violations could be mapped to businesses!")
-        print("💡 Check that business_id values match between the two CSV files")
-        return None
-    
-    violations_neighborhood_df = pd.DataFrame(violations_with_neighborhood)
-    
-    # Calculate statistics
-    business_counts = food_establishments.groupby('neighborhood').size().to_dict()
-    violation_counts = violations_neighborhood_df.groupby('neighborhood').size().to_dict()
-    
-    print(f"\n📊 Statistics:")
-    print(f"   - Found businesses in {len(business_counts)} neighborhoods")
-    print(f"   - Found violations in {len(violation_counts)} neighborhoods")
-    
-    # Check if we have meaningful data
-    total_businesses_assigned = sum(business_counts.values())
-    total_violations_assigned = sum(violation_counts.values())
-    
-    print(f"   - Total businesses assigned: {total_businesses_assigned}")
-    print(f"   - Total violations assigned: {total_violations_assigned}")
-    
-    # Special check for Chinatown
-    chinatown_businesses = business_counts.get('Chinatown', 0)
-    chinatown_violations = violation_counts.get('Chinatown', 0)
-    print(f"   - Chinatown: {chinatown_businesses} businesses, {chinatown_violations} violations")
-    
-    # Create map
-    print(f"\n🗺️  Creating interactive map...")
-    m = folium.Map(location=[45.5017, -73.5673], zoom_start=11, tiles='OpenStreetMap')
-    
-    # Add title
-    title_html = '''
-    <div style="position: fixed; 
-                top: 10px; left: 50%; width: 600px; height: 90px; 
-                margin-left: -300px; background-color: white; border:2px solid grey; z-index:9999; 
-                font-size:18px; text-align: center; padding: 10px; border-radius: 5px;">
-    <p style="margin: 5px 0; font-weight: bold;">Montreal Health Violations by Neighborhood</p>
-    <p style="font-size:14px; margin: 5px 0;">Hover over neighborhoods to see names and ratios</p>
-    </div>
-    '''
-    m.get_root().html.add_child(folium.Element(title_html))
-    
-    # Add neighborhoods to map
-    neighborhoods_added = 0
-    
-    for neighborhood_name, data in neighborhoods.items():
-        business_count = business_counts.get(neighborhood_name, 0)
-        violation_count = violation_counts.get(neighborhood_name, 0)
-        
-        # Only add neighborhoods that have businesses
-        if business_count > 0:
-            ratio = safe_ratio(violation_count, business_count)
-            
-            popup_content = generate_popup_html(neighborhood_name, business_count, violation_count, ratio)
-            tooltip_content = generate_tooltip_html(neighborhood_name, business_count, violation_count, ratio)
-            
-            style = {
-                'fillColor': get_color(ratio),
-                'color': '#333333', 
-                'weight': 3 if neighborhood_name == 'Chinatown' else 2,
-                'fillOpacity': 0.8 if neighborhood_name == 'Chinatown' else 0.7,
-                'opacity': 0.8
-            }
-            
-            if neighborhood_name == 'Chinatown':
-                # Special handling for Chinatown polygon
-                folium.Polygon(
-                    locations=CHINATOWN_POLYGON,
-                    **style,
-                    popup=folium.Popup(popup_content, max_width=350),
-                    tooltip=folium.Tooltip(tooltip_content, sticky=True)
-                ).add_to(m)
-                neighborhoods_added += 1
+    for i, url in enumerate(urls):
+        try:
+            print(f"Trying source {i+1}/3: {url.split('/')[-1]}")
+            response = requests.get(url, timeout=30, verify=False)
+            if response.status_code == 200:
+                neighborhoods = gpd.read_file(url)
+                print(f"Successfully loaded {len(neighborhoods)} neighborhoods from source {i+1}")
+                print(f"Available columns: {list(neighborhoods.columns)}")
                 
-            elif 'bounds' in data:
-                # Handle rectangular bounds
-                bounds = data['bounds']
-                rectangle_coords = [
-                    [bounds[0][0], bounds[0][1]], [bounds[0][0], bounds[1][1]],
-                    [bounds[1][0], bounds[1][1]], [bounds[1][0], bounds[0][1]]
-                ]
-                folium.Polygon(
-                    locations=rectangle_coords,
-                    **style,
-                    popup=folium.Popup(popup_content, max_width=350),
-                    tooltip=folium.Tooltip(tooltip_content, sticky=True)
-                ).add_to(m)
-                neighborhoods_added += 1
+                # Standardize column names - look for common neighborhood name fields
+                possible_name_fields = ['NOM', 'NAME', 'nom', 'name', 'QUARTIER', 'quartier', 'ARROND', 'arrond']
+                name_field = None
+                
+                for field in possible_name_fields:
+                    if field in neighborhoods.columns:
+                        name_field = field
+                        print(f"Found name field: {field}")
+                        break
+                
+                if name_field and name_field != 'NOM':
+                    neighborhoods = neighborhoods.rename(columns={name_field: 'NOM'})
+                elif 'NOM' not in neighborhoods.columns:
+                    # Create generic names if no name field found
+                    neighborhoods['NOM'] = [f'Area_{i}' for i in range(len(neighborhoods))]
+                    print("Warning: No neighborhood name field found, using generic names")
+                
+                # Print sample of neighborhood names for debugging
+                print(f"Sample neighborhood names: {list(neighborhoods['NOM'].head(10))}")
+                
+                return neighborhoods
+            else:
+                print(f"Failed to fetch from source {i+1} (status: {response.status_code})")
+                
+        except Exception as e:
+            print(f"Error with source {i+1}: {e}")
+            continue
     
-    print(f"   - Added {neighborhoods_added} neighborhoods to map")
+    print("All neighborhood data sources failed")
+    return None
+
+def get_neighborhoods_alternative_sources():
+    """Try alternative sources for neighborhood data."""
+    print("Trying alternative neighborhood data sources...")
     
-    # Add sample business markers for debugging (optional)
-    if len(food_establishments) > 0:
-        print(f"🎯 Adding sample business markers for verification...")
-        sample_businesses = food_establishments.sample(n=min(20, len(food_establishments)), random_state=42)
+    alternative_urls = [
+        "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/montreal.geojson",
+        "https://raw.githubusercontent.com/codeforgermany/click_that_hood/master/public/data/montreal.geojson"
+    ]
+    
+    for i, url in enumerate(alternative_urls):
+        try:
+            print(f"Trying alternative source {i+1}: {url.split('/')[-1]}")
+            response = requests.get(url, timeout=30, verify=False)
+            if response.status_code == 200:
+                neighborhoods = gpd.read_file(url)
+                print(f"Successfully loaded {len(neighborhoods)} neighborhoods from alternative source {i+1}")
+                
+                # Standardize column names
+                if 'name' in neighborhoods.columns:
+                    neighborhoods = neighborhoods.rename(columns={'name': 'NOM'})
+                elif 'NOM' not in neighborhoods.columns:
+                    neighborhoods['NOM'] = [f'Area_{i}' for i in range(len(neighborhoods))]
+                
+                return neighborhoods
+            else:
+                print(f"Failed to fetch from alternative source {i+1}")
+                
+        except Exception as e:
+            print(f"Error with alternative source {i+1}: {e}")
+            continue
+    
+    return None
+
+def get_neighborhoods_overpass_api():
+    """Try to get neighborhood data from Overpass API."""
+    print("Trying Overpass API for neighborhood data...")
+    
+    try:
+        # Overpass query for Montreal administrative boundaries
+        overpass_url = "http://overpass-api.de/api/interpreter"
+        overpass_query = """
+        [out:json][timeout:25];
+        (
+          relation["admin_level"~"^(8|9|10)$"]["place"~"suburb|neighbourhood"]["name"]["boundary"="administrative"](45.4,-73.8,45.7,-73.4);
+        );
+        out geom;
+        """
         
-        for idx, business in sample_businesses.iterrows():
-            folium.CircleMarker(
-                location=[business['latitude'], business['longitude']],
-                radius=3,
-                popup=f"Business: {business.get('type', 'Unknown')}<br>Neighborhood: {business['neighborhood']}",
-                color='red',
-                fill=True,
-                fillColor='red',
-                fillOpacity=0.7
-            ).add_to(m)
+        response = requests.post(overpass_url, data={'data': overpass_query}, timeout=30)
+        
+        if response.status_code == 200:
+            data = response.json()
+            if data['elements']:
+                print(f"Found {len(data['elements'])} administrative boundaries from Overpass API")
+                # Convert to GeoDataFrame (simplified - would need more complex processing)
+                return None  # For now, return None as this requires complex OSM data processing
+        
+    except Exception as e:
+        print(f"Error with Overpass API: {e}")
     
-    # Add legend
+    return None
+
+def get_neighborhoods_nominatim(businesses, max_businesses=1500):
+    """Use Nominatim to identify neighborhoods for business locations."""
+    print(f"Using Nominatim to identify neighborhoods for up to {max_businesses} businesses...")
+    
+    try:
+        geolocator = Nominatim(user_agent="montreal_violations_analysis")
+        neighborhood_assignments = {}
+        
+        # Sample businesses if we have too many
+        business_sample = businesses.sample(min(max_businesses, len(businesses))) if len(businesses) > max_businesses else businesses
+        
+        for idx, (_, business) in enumerate(business_sample.iterrows()):
+            if idx % 100 == 0:
+                print(f"Processed {idx}/{len(business_sample)} businesses...")
+            
+            try:
+                location = geolocator.reverse(f"{business['latitude']}, {business['longitude']}", timeout=10)
+                if location and location.raw.get('address'):
+                    address = location.raw['address']
+                    neighborhood = (address.get('suburb') or 
+                                  address.get('neighbourhood') or 
+                                  address.get('quarter') or 
+                                  address.get('city_district') or 
+                                  'Unknown')
+                    neighborhood_assignments[business['business_id']] = neighborhood
+                
+                # Add delay to respect Nominatim usage policy
+                time.sleep(0.1)
+                
+            except Exception as e:
+                if idx < 10:  # Only print first few errors
+                    print(f"Error geocoding business {business['business_id']}: {e}")
+                continue
+        
+        print(f"Successfully identified neighborhoods for {len(neighborhood_assignments)} businesses")
+        return neighborhood_assignments
+        
+    except Exception as e:
+        print(f"Error in Nominatim geocoding: {e}")
+        return {}
+
+def create_neighborhood_polygons_from_businesses(businesses, neighborhood_assignments):
+    """Create approximate neighborhood polygons from business clusters."""
+    print("Creating neighborhood polygons from business clusters...")
+    
+    try:
+        # Group businesses by neighborhood
+        neighborhood_businesses = defaultdict(list)
+        for business_id, neighborhood in neighborhood_assignments.items():
+            business = businesses[businesses['business_id'] == business_id]
+            if not business.empty:
+                neighborhood_businesses[neighborhood].append([
+                    business.iloc[0]['latitude'], 
+                    business.iloc[0]['longitude']
+                ])
+        
+        neighborhoods_list = []
+        
+        for neighborhood, coords in neighborhood_businesses.items():
+            if len(coords) < 3:  # Need at least 3 points for a polygon
+                continue
+            
+            try:
+                # Use DBSCAN to cluster points and create convex hull
+                coords_array = np.array(coords)
+                
+                # Create a simple convex hull around the points
+                from scipy.spatial import ConvexHull
+                if len(coords) >= 3:
+                    hull = ConvexHull(coords_array)
+                    hull_coords = [(coords_array[vertex][1], coords_array[vertex][0]) for vertex in hull.vertices]
+                    polygon = Polygon(hull_coords)
+                    
+                    neighborhoods_list.append({
+                        'NOM': neighborhood,
+                        'geometry': polygon
+                    })
+            except Exception as e:
+                print(f"Error creating polygon for {neighborhood}: {e}")
+                continue
+        
+        if neighborhoods_list:
+            neighborhoods_gdf = gpd.GeoDataFrame(neighborhoods_list, crs='EPSG:4326')
+            print(f"Created {len(neighborhoods_gdf)} neighborhood polygons")
+            return neighborhoods_gdf
+        
+    except Exception as e:
+        print(f"Error creating neighborhood polygons: {e}")
+    
+    return None
+
+def improve_unknown_assignments(business_neighborhoods, violations, max_unknown_to_process=500):
+    """Try to improve neighborhood assignments for businesses marked as 'Unknown'."""
+    print("Improving neighborhood assignments for unknown businesses...")
+    
+    unknown_businesses = business_neighborhoods[business_neighborhoods['neighborhood'] == 'Unknown']
+    
+    if len(unknown_businesses) == 0:
+        return business_neighborhoods
+    
+    print(f"Found {len(unknown_businesses)} businesses with unknown neighborhoods")
+    
+    # Sample if too many unknowns
+    if len(unknown_businesses) > max_unknown_to_process:
+        unknown_sample = unknown_businesses.sample(max_unknown_to_process)
+        print(f"Processing sample of {max_unknown_to_process} unknown businesses")
+    else:
+        unknown_sample = unknown_businesses
+    
+    try:
+        geolocator = Nominatim(user_agent="montreal_violations_analysis_improve")
+        
+        for idx, (business_idx, business) in enumerate(unknown_sample.iterrows()):
+            if idx % 50 == 0:
+                print(f"Improved {idx}/{len(unknown_sample)} unknown businesses...")
+            
+            try:
+                location = geolocator.reverse(f"{business['latitude']}, {business['longitude']}", timeout=10)
+                if location and location.raw.get('address'):
+                    address = location.raw['address']
+                    neighborhood = (address.get('suburb') or 
+                                  address.get('neighbourhood') or 
+                                  address.get('quarter') or 
+                                  address.get('city_district') or 
+                                  'Unknown')
+                    
+                    if neighborhood != 'Unknown':
+                        business_neighborhoods.loc[business_idx, 'neighborhood'] = neighborhood
+                
+                time.sleep(0.1)  # Respect rate limits
+                
+            except Exception as e:
+                continue
+    
+    except Exception as e:
+        print(f"Error improving unknown assignments: {e}")
+    
+    return business_neighborhoods
+
+def create_chinatown_polygon():
+    """Create a special polygon for Quartier Chinois."""
+    chinatown_coords = [
+        [45.509282, -73.561113],
+        [45.507696, -73.562595], 
+        [45.507041, -73.561215],
+        [45.505557, -73.562643],
+        [45.504930, -73.561120],
+        [45.508093, -73.558214]
+    ]
+    
+    # Convert to Polygon (note: shapely expects (lon, lat) format)
+    polygon_coords = [(coord[1], coord[0]) for coord in chinatown_coords]
+    return Polygon(polygon_coords)
+
+def assign_neighborhoods(businesses, neighborhoods_gdf):
+    """Assign each business to a neighborhood using spatial joins."""
+    print("Assigning businesses to neighborhoods...")
+    
+    # Create GeoDataFrame from businesses
+    business_points = gpd.GeoDataFrame(
+        businesses,
+        geometry=gpd.points_from_xy(businesses.longitude, businesses.latitude),
+        crs='EPSG:4326'
+    )
+    
+    # Initialize neighborhood column
+    business_points['neighborhood'] = None
+    
+    # Ensure neighborhoods are in the same CRS
+    if neighborhoods_gdf is not None:
+        if neighborhoods_gdf.crs != 'EPSG:4326':
+            neighborhoods_gdf = neighborhoods_gdf.to_crs('EPSG:4326')
+    
+    # Create Chinatown as a special neighborhood
+    chinatown_poly = create_chinatown_polygon()
+    chinatown_gdf = gpd.GeoDataFrame(
+        {'NOM': ['Quartier Chinois'], 'geometry': [chinatown_poly]},
+        crs='EPSG:4326'
+    )
+    
+    # First, assign businesses to Chinatown
+    try:
+        chinatown_businesses = gpd.sjoin(business_points, chinatown_gdf, how='inner', predicate='within')
+        business_points.loc[chinatown_businesses.index, 'neighborhood'] = 'Quartier Chinois'
+        print(f"Found {len(chinatown_businesses)} businesses in Quartier Chinois")
+    except Exception as e:
+        print(f"Error assigning Chinatown businesses: {e}")
+    
+    # Assign remaining businesses to other neighborhoods if available
+    if neighborhoods_gdf is not None:
+        try:
+            # Remove Chinatown businesses from consideration for other neighborhoods
+            remaining_businesses = business_points[business_points['neighborhood'].isna()]
+            
+            # Assign remaining businesses to other neighborhoods
+            business_neighborhoods = gpd.sjoin(remaining_businesses, neighborhoods_gdf, how='left', predicate='within')
+            
+            # Update the main dataframe with neighborhood assignments
+            business_points.loc[business_neighborhoods.index, 'neighborhood'] = business_neighborhoods['NOM']
+            
+        except Exception as e:
+            print(f"Error in spatial join: {e}")
+    
+    # Handle businesses not assigned to any neighborhood
+    unassigned = business_points['neighborhood'].isna().sum()
+    if unassigned > 0:
+        print(f"Warning: {unassigned} businesses could not be assigned to neighborhoods")
+        business_points['neighborhood'] = business_points['neighborhood'].fillna('Unknown')
+    
+    return business_points
+
+def calculate_violation_ratios(business_neighborhoods, violations):
+    """Calculate violation ratios for each neighborhood."""
+    print("Calculating violation ratios...")
+    
+    # Count businesses per neighborhood
+    business_counts = business_neighborhoods['neighborhood'].value_counts()
+    
+    # Merge violations with business neighborhoods
+    violations_with_neighborhoods = violations.merge(
+        business_neighborhoods[['business_id', 'neighborhood']], 
+        on='business_id', 
+        how='left'
+    )
+    
+    # Count violations per neighborhood
+    violation_counts = violations_with_neighborhoods['neighborhood'].value_counts()
+    
+    # Calculate ratios
+    ratios = {}
+    for neighborhood in business_counts.index:
+        business_count = business_counts[neighborhood]
+        violation_count = violation_counts.get(neighborhood, 0)
+        ratio = violation_count / business_count if business_count > 0 else 0
+        ratios[neighborhood] = {
+            'businesses': business_count,
+            'violations': violation_count,
+            'ratio': ratio
+        }
+    
+    return ratios
+
+def create_interactive_map(neighborhoods_gdf, ratios):
+    """Create an interactive Folium map with neighborhood polygons and violation ratios."""
+    print("Creating interactive map...")
+    
+    # Center the map on Montreal
+    montreal_center = [45.5017, -73.5673]
+    m = folium.Map(location=montreal_center, zoom_start=11, tiles='OpenStreetMap')
+    
+    # Color scale for violation ratios
+    max_ratio = max([data['ratio'] for data in ratios.values()]) if ratios else 1
+    
+    def get_color(ratio):
+        """Get color based on violation ratio."""
+        if ratio == 0:
+            return 'green'
+        elif ratio < max_ratio * 0.3:
+            return 'yellow'
+        elif ratio < max_ratio * 0.6:
+            return 'orange'
+        else:
+            return 'red'
+    
+    # Add Chinatown polygon with enhanced tooltip
+    chinatown_poly = create_chinatown_polygon()
+    chinatown_coords = [[coord[1], coord[0]] for coord in chinatown_poly.exterior.coords]
+    
+    chinatown_ratio = ratios.get('Quartier Chinois', {'businesses': 0, 'violations': 0, 'ratio': 0})
+    chinatown_color = get_color(chinatown_ratio['ratio'])
+    
+    # Enhanced tooltip with better styling
+    chinatown_tooltip = f"""
+    <div style='font-family: Arial; font-size: 14px; font-weight: bold; color: #333;'>
+        <strong>🏮 Quartier Chinois</strong><br>
+        <span style='font-size: 12px; font-weight: normal;'>
+            Violation Ratio: {chinatown_ratio['ratio']:.3f}<br>
+            Businesses: {chinatown_ratio['businesses']}<br>
+            Violations: {chinatown_ratio['violations']}
+        </span>
+    </div>
+    """
+    
+    folium.Polygon(
+        locations=chinatown_coords,
+        color=chinatown_color,
+        weight=3,
+        fillColor=chinatown_color,
+        fillOpacity=0.6,
+        popup=folium.Popup(
+            f"""<div style='font-family: Arial; padding: 10px;'>
+            <h4 style='margin: 0 0 10px 0; color: #d63031;'>🏮 Quartier Chinois</h4>
+            <table style='font-size: 12px; border-collapse: collapse;'>
+                <tr><td style='padding: 2px 10px 2px 0; font-weight: bold;'>Businesses:</td><td>{chinatown_ratio['businesses']}</td></tr>
+                <tr><td style='padding: 2px 10px 2px 0; font-weight: bold;'>Violations:</td><td>{chinatown_ratio['violations']}</td></tr>
+                <tr><td style='padding: 2px 10px 2px 0; font-weight: bold;'>Violation Ratio:</td><td>{chinatown_ratio['ratio']:.3f}</td></tr>
+            </table>
+            </div>""",
+            max_width=300
+        ),
+        tooltip=folium.Tooltip(
+            chinatown_tooltip,
+            permanent=False,
+            sticky=True,
+            style="background-color: rgba(255,255,255,0.95); border: 2px solid #333; border-radius: 5px; padding: 8px;"
+        )
+    ).add_to(m)
+    
+    # Add other neighborhood polygons with enhanced tooltips
+    if neighborhoods_gdf is not None:
+        for idx, row in neighborhoods_gdf.iterrows():
+            neighborhood_name = row.get('NOM', f'Neighborhood_{idx}')
+            
+            # Try to get a better name from multiple possible fields
+            if neighborhood_name.startswith('Area_') or neighborhood_name.startswith('Neighborhood_'):
+                # Look for other name fields
+                for possible_field in ['name', 'NAME', 'nom', 'NOM', 'QUARTIER', 'quartier', 'ARROND', 'arrond']:
+                    if possible_field in row and pd.notna(row[possible_field]) and str(row[possible_field]).strip():
+                        neighborhood_name = str(row[possible_field]).strip()
+                        break
+            
+            # Skip if this is Chinatown (already added)
+            if neighborhood_name == 'Quartier Chinois':
+                continue
+                
+            neighborhood_data = ratios.get(neighborhood_name, {'businesses': 0, 'violations': 0, 'ratio': 0})
+            
+            # Skip neighborhoods with no businesses
+            if neighborhood_data['businesses'] == 0:
+                continue
+            
+            try:
+                # Convert geometry to GeoJSON-like format for Folium
+                if row.geometry.geom_type == 'Polygon':
+                    coords = [[point[1], point[0]] for point in row.geometry.exterior.coords]
+                elif row.geometry.geom_type == 'MultiPolygon':
+                    coords = []
+                    for polygon in row.geometry.geoms:
+                        coords.append([[point[1], point[0]] for point in polygon.exterior.coords])
+                else:
+                    continue
+                
+                color = get_color(neighborhood_data['ratio'])
+                
+                # Enhanced tooltip for regular neighborhoods
+                enhanced_tooltip = f"""
+                <div style='font-family: Arial; font-size: 14px; font-weight: bold; color: #333;'>
+                    <strong>📍 {neighborhood_name}</strong><br>
+                    <span style='font-size: 12px; font-weight: normal;'>
+                        Violation Ratio: {neighborhood_data['ratio']:.3f}<br>
+                        Businesses: {neighborhood_data['businesses']}<br>
+                        Violations: {neighborhood_data['violations']}
+                    </span>
+                </div>
+                """
+                
+                enhanced_popup = f"""
+                <div style='font-family: Arial; padding: 10px;'>
+                    <h4 style='margin: 0 0 10px 0; color: #0984e3;'>📍 {neighborhood_name}</h4>
+                    <table style='font-size: 12px; border-collapse: collapse;'>
+                        <tr><td style='padding: 2px 10px 2px 0; font-weight: bold;'>Businesses:</td><td>{neighborhood_data['businesses']}</td></tr>
+                        <tr><td style='padding: 2px 10px 2px 0; font-weight: bold;'>Violations:</td><td>{neighborhood_data['violations']}</td></tr>
+                        <tr><td style='padding: 2px 10px 2px 0; font-weight: bold;'>Violation Ratio:</td><td>{neighborhood_data['ratio']:.3f}</td></tr>
+                    </table>
+                </div>
+                """
+                
+                if row.geometry.geom_type == 'Polygon':
+                    folium.Polygon(
+                        locations=coords,
+                        color=color,
+                        weight=2,
+                        fillColor=color,
+                        fillOpacity=0.3,
+                        popup=folium.Popup(enhanced_popup, max_width=300),
+                        tooltip=folium.Tooltip(
+                            enhanced_tooltip,
+                            permanent=False,
+                            sticky=True,
+                            style="background-color: rgba(255,255,255,0.95); border: 2px solid #333; border-radius: 5px; padding: 8px;"
+                        )
+                    ).add_to(m)
+                else:  # MultiPolygon
+                    for coord_set in coords:
+                        folium.Polygon(
+                            locations=coord_set,
+                            color=color,
+                            weight=2,
+                            fillColor=color,
+                            fillOpacity=0.3,
+                            popup=folium.Popup(enhanced_popup, max_width=300),
+                            tooltip=folium.Tooltip(
+                                enhanced_tooltip,
+                                permanent=False,
+                                sticky=True,
+                                style="background-color: rgba(255,255,255,0.95); border: 2px solid #333; border-radius: 5px; padding: 8px;"
+                            )
+                        ).add_to(m)
+                        
+            except Exception as e:
+                print(f"Error adding polygon for {neighborhood_name}: {e}")
+                continue
+    
+    # Add an enhanced legend with better styling
     legend_html = '''
     <div style="position: fixed; 
-                bottom: 50px; right: 50px; width: 220px; height: 180px; 
-                background-color: white; border:2px solid grey; z-index:9999; 
-                font-size:14px; padding: 15px; border-radius: 5px;">
-    <h4 style="margin: 0 0 15px 0;">Violation Ratio Legend</h4>
-    <p style="margin: 5px 0;"><i class="fa fa-square" style="color:#1a9850"></i> Low (0.0 - 0.2)</p>
-    <p style="margin: 5px 0;"><i class="fa fa-square" style="color:#91bfdb"></i> Medium-Low (0.2 - 0.4)</p>
-    <p style="margin: 5px 0;"><i class="fa fa-square" style="color:#ffffbf"></i> Medium (0.4 - 0.6)</p>
-    <p style="margin: 5px 0;"><i class="fa fa-square" style="color:#fc8d59"></i> Medium-High (0.6 - 0.8)</p>
-    <p style="margin: 5px 0;"><i class="fa fa-square" style="color:#d73027"></i> High (0.8+)</p>
+                bottom: 50px; left: 50px; width: 250px; height: 140px; 
+                background-color: rgba(255,255,255,0.95); 
+                border: 2px solid #333; 
+                border-radius: 10px;
+                z-index:9999; 
+                font-size:14px; 
+                padding: 15px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                font-family: Arial, sans-serif;">
+    <h4 style="margin: 0 0 10px 0; color: #333; text-align: center;">Violation Ratio Legend</h4>
+    <div style="display: flex; align-items: center; margin: 5px 0;">
+        <div style="width: 20px; height: 15px; background-color: green; margin-right: 10px; border: 1px solid #333;"></div>
+        <span>No violations (0)</span>
+    </div>
+    <div style="display: flex; align-items: center; margin: 5px 0;">
+        <div style="width: 20px; height: 15px; background-color: yellow; margin-right: 10px; border: 1px solid #333;"></div>
+        <span>Low (0-30% of max)</span>
+    </div>
+    <div style="display: flex; align-items: center; margin: 5px 0;">
+        <div style="width: 20px; height: 15px; background-color: orange; margin-right: 10px; border: 1px solid #333;"></div>
+        <span>Medium (30-60% of max)</span>
+    </div>
+    <div style="display: flex; align-items: center; margin: 5px 0;">
+        <div style="width: 20px; height: 15px; background-color: red; margin-right: 10px; border: 1px solid #333;"></div>
+        <span>High (60%+ of max)</span>
+    </div>
     </div>
     '''
     m.get_root().html.add_child(folium.Element(legend_html))
     
-    # Save map
-    output_file = 'montreal_violations_map_fixed.html'
-    m.save(output_file)
+    # Add a title to the map
+    title_html = '''
+    <div style="position: fixed; 
+                top: 10px; left: 50%; transform: translateX(-50%);
+                background-color: rgba(255,255,255,0.95); 
+                border: 2px solid #333; 
+                border-radius: 10px;
+                z-index:9999; 
+                font-size:18px; 
+                padding: 10px 20px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+                font-family: Arial, sans-serif;
+                font-weight: bold;
+                color: #333;">
+        Montreal Business Violations by Neighborhood
+    </div>
+    '''
+    m.get_root().html.add_child(folium.Element(title_html))
     
-    print(f"\n✅ Map saved as '{output_file}'")
-    
-    # Print detailed neighborhood statistics
-    print(f"\n📊 DETAILED NEIGHBORHOOD STATISTICS")
-    print("=" * 80)
-    
-    all_neighborhoods = set(business_counts.keys()) | set(violation_counts.keys())
-    neighborhood_stats = []
-    
-    for neighborhood in all_neighborhoods:
-        business_count = business_counts.get(neighborhood, 0)
-        violation_count = violation_counts.get(neighborhood, 0)
-        ratio = safe_ratio(violation_count, business_count)
-        
-        if business_count > 0:  # Only show neighborhoods with food establishments
-            neighborhood_stats.append((neighborhood, business_count, violation_count, ratio))
-    
-    # Sort by violation ratio (highest first)
-    neighborhood_stats.sort(key=lambda x: x[3], reverse=True)
-    
-    print(f"{'NEIGHBORHOOD NAME':<40} {'RATIO':<8} {'VIOLATIONS':<12} {'ESTABLISHMENTS':<15}")
-    print("-" * 80)
-    
-    for name, businesses, violations, ratio in neighborhood_stats:
-        # Highlight Chinatown with special formatting
-        if name == 'Chinatown':
-            print(f"🏮 {name:<38} {ratio:>6.3f} {violations:>10d} {businesses:>13d}")
-        else:
-            print(f"{name:<40} {ratio:>6.3f} {violations:>10d} {businesses:>13d}")
-    
-    print(f"\n✅ Successfully processed {len(neighborhood_stats)} neighborhoods with food establishments")
-    print(f"✅ Open '{output_file}' in your browser to see the interactive map!")
-    
-    if neighborhoods_added == 0:
-        print(f"\n⚠️  WARNING: No neighborhoods were added to the map!")
-        print(f"💡 This suggests that businesses aren't being properly assigned to neighborhoods.")
-        print(f"💡 Run the debug version first to identify the issue.")
-    
-    return m, neighborhood_stats
+    return m
 
-# Main execution
+def main():
+    """Main function to run the complete analysis."""
+    print("Montreal Business Violations Neighborhood Analysis")
+    print("=" * 55)
+    
+    try:
+        # Load data
+        businesses, violations = load_data()
+        
+        if businesses is None or violations is None:
+            print("Failed to load data. Exiting.")
+            return None, None
+        
+        # Get neighborhood boundaries with multiple fallbacks
+        neighborhoods_gdf = get_montreal_neighborhoods()
+        
+        if neighborhoods_gdf is None:
+            print("Official Montreal data failed. Trying alternative sources...")
+            neighborhoods_gdf = get_neighborhoods_alternative_sources()
+        
+        if neighborhoods_gdf is None:
+            print("Alternative sources failed. Trying Overpass API...")
+            neighborhoods_gdf = get_neighborhoods_overpass_api()
+        
+        if neighborhoods_gdf is None:
+            print("All official sources failed. Using Nominatim to identify neighborhoods...")
+            
+            # Use Nominatim to identify neighborhoods from business locations
+            neighborhood_assignments = get_neighborhoods_nominatim(businesses, max_businesses=1500)
+            
+            if neighborhood_assignments:
+                # Create polygons from business clusters
+                neighborhoods_gdf = create_neighborhood_polygons_from_businesses(businesses, neighborhood_assignments)
+                
+                if neighborhoods_gdf is not None:
+                    print("Successfully created neighborhoods using Nominatim")
+                else:
+                    print("Could not create neighborhood polygons from Nominatim data")
+                    neighborhoods_gdf = None
+            else:
+                print("Nominatim neighborhood detection failed")
+                neighborhoods_gdf = None
+        
+        if neighborhoods_gdf is None:
+            # Create minimal analysis with just Chinatown
+            print("Creating minimal analysis with Chinatown only...")
+            chinatown_poly = create_chinatown_polygon()
+            
+            # Check which businesses are in Chinatown
+            chinatown_businesses = []
+            for _, business in businesses.iterrows():
+                point = Point(business['longitude'], business['latitude'])
+                if chinatown_poly.contains(point):
+                    chinatown_businesses.append(business['business_id'])
+            
+            # Calculate Chinatown ratios
+            chinatown_violations = violations[violations['business_id'].isin(chinatown_businesses)]
+            ratios = {
+                'Quartier Chinois': {
+                    'businesses': len(chinatown_businesses),
+                    'violations': len(chinatown_violations),
+                    'ratio': len(chinatown_violations) / len(chinatown_businesses) if chinatown_businesses else 0
+                }
+            }
+            
+            # Create simple map
+            m = create_interactive_map(None, ratios)
+        else:
+            # Full analysis with all neighborhoods
+            business_neighborhoods = assign_neighborhoods(businesses, neighborhoods_gdf)
+            
+            # Try to improve assignments for unknown businesses
+            business_neighborhoods = improve_unknown_assignments(business_neighborhoods, violations, max_unknown_to_process=500)
+            
+            ratios = calculate_violation_ratios(business_neighborhoods, violations)
+            m = create_interactive_map(neighborhoods_gdf, ratios)
+        
+        # Save the map
+        output_file = 'montreal_business_violations_map.html'
+        m.save(output_file)
+        print(f"\nMap saved as '{output_file}'")
+        print(f"Open this file in your web browser to view the interactive map.")
+        
+        # Print summary statistics
+        print("\nSummary Statistics:")
+        print("-" * 70)
+        print(f"{'Neighborhood':<30} | {'Businesses':>10} | {'Violations':>10} | {'Ratio':>8}")
+        print("-" * 70)
+        
+        for neighborhood, data in sorted(ratios.items(), key=lambda x: x[1]['ratio'], reverse=True):
+            print(f"{neighborhood:<30} | {data['businesses']:>10} | {data['violations']:>10} | {data['ratio']:>8.3f}")
+        
+        return m, ratios
+        
+    except Exception as e:
+        print(f"Error in main execution: {e}")
+        import traceback
+        traceback.print_exc()
+        return None, None
+# Load GeoJSON with real neighborhood names
+url = "https://raw.githubusercontent.com/codeforamerica/click_that_hood/master/public/data/montreal.geojson"
+neighborhoods = gpd.read_file(url)
+
+# Ensure 'name' is renamed to 'NOM'
+neighborhoods = neighborhoods.rename(columns={'name': 'NOM'})
+
+# Calculate centroids
+neighborhoods['centroid'] = neighborhoods.geometry.centroid
+
+# Now you can get latitude and longitude
+neighborhoods['latitude'] = neighborhoods.centroid.y
+neighborhoods['longitude'] = neighborhoods.centroid.x
+
+# Example: print name and center coordinates
+print(neighborhoods[['NOM', 'latitude', 'longitude']].head())
 if __name__ == "__main__":
-    print("🚀 Running Fixed Montreal Violations Map Generator")
-    print("💡 If you see issues, run the debug version first!")
-    print("=" * 60)
+    # Check if required packages are installed
+    required_packages = {
+        'geopandas': 'geopandas',
+        'folium': 'folium', 
+        'shapely': 'shapely',
+        'geopy': 'geopy',
+        'sklearn': 'scikit-learn',
+        'scipy': 'scipy'
+    }
     
-    result = create_montreal_violations_map_fixed()
+    missing_packages = []
+    for package, install_name in required_packages.items():
+        try:
+            __import__(package)
+        except ImportError:
+            missing_packages.append(install_name)
     
-    if result:
-        print("\n🎉 SUCCESS! Map generation completed!")
-        print("💡 TIP: Red dots show sample business locations for verification")
-        print("💡 TIP: Hover over neighborhoods to see their names and statistics!")
-        print("💡 TIP: Click on neighborhoods for detailed information!")
-        print("🏮 TIP: Look for Chinatown as a special highlighted area!")
+    if missing_packages:
+        print(f"Missing required packages: {', '.join(missing_packages)}")
+        print("Please install required packages with:")
+        print(f"pip install {' '.join(missing_packages)}")
+        sys.exit(1)
+
+    # Run the analysis
+    map_obj, violation_ratios = main()
+    
+    if map_obj and violation_ratios:
+        print(f"\nAnalysis complete! Found {len(violation_ratios)} neighborhoods.")
+        print("Open 'montreal_business_violations_map.html' in your browser to view the interactive map.")
     else:
-        print("\n❌ Map generation failed.")
-        print("💡 Try running the debug version to identify the problem:")
-        print("   python debug_version.py")
+        print("\nAnalysis failed. Please check the error messages above.")
